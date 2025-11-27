@@ -70,7 +70,7 @@ export function CreateItemModal({ type, onClose, onCreate }: CreateItemModalProp
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-muted text-muted-foreground rounded-[var(--radius-button)] hover:opacity-90 transition-opacity"
+              className="flex-1 px-4 py-2 bg-secondary text-secondary-foreground rounded-[var(--radius-button)] hover:opacity-90 transition-opacity"
             >
               Cancel
             </button>
