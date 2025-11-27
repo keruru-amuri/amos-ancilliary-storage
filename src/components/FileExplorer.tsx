@@ -207,8 +207,16 @@ export function FileExplorer({
   };
 
   const handleGoUp = () => {
-    if (currentFolder) {
-      setCurrentFolderId(currentFolder.parentId);
+    // Get parent from breadcrumb path instead of items array
+    if (breadcrumbPath.length > 0) {
+      const currentIndex = breadcrumbPath.findIndex(item => item.id === currentFolderId);
+      if (currentIndex > 0) {
+        // Go to previous breadcrumb item
+        setCurrentFolderId(breadcrumbPath[currentIndex - 1].id);
+      } else if (currentIndex === 0) {
+        // Go to root
+        setCurrentFolderId(null);
+      }
     }
   };
 
