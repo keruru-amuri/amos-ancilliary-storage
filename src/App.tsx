@@ -78,7 +78,9 @@ export default function App() {
   // Load breadcrumb path when folder changes
   useEffect(() => {
     if (currentFolderId) {
-      loadBreadcrumbPath(currentFolderId);
+      // Clean the ID by removing any trailing :0 or similar artifacts
+      const cleanId = currentFolderId.split(':')[0];
+      loadBreadcrumbPath(cleanId);
     } else {
       setBreadcrumbPath([]);
     }

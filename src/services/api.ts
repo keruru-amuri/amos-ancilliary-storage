@@ -32,6 +32,13 @@ class ApiError extends Error {
   }
 }
 
+// Helper to clean Azure Table Storage artifacts from IDs
+function cleanId(id: string | null): string | null {
+  if (!id) return null;
+  // Remove trailing :0 or similar artifacts that Azure Table Storage might add
+  return id.split(':')[0];
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -64,14 +71,16 @@ export const foldersApi = {
   },
 
   async delete(id: string): Promise<{ success: boolean; deletedCount: number }> {
-    const response = await fetch(`${API_BASE_URL}/folders/${id}`, {
+    const cleanedId = cleanId(id);
+    const response = await fetch(`${API_BASE_URL}/folders/${cleanedId}`, {
       method: 'DELETE'
     });
     return handleResponse(response);
   },
 
   async rename(id: string, name: string): Promise<FileItem> {
-    const response = await fetch(`${API_BASE_URL}/folders/${id}`, {
+    const cleanedId = cleanId(id);
+    const response = await fetch(`${API_BASE_URL}/folders/${cleanedId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -80,7 +89,8 @@ export const foldersApi = {
   },
 
   async getPath(id: string): Promise<FileItem[]> {
-    const response = await fetch(`${API_BASE_URL}/folders/${id}/path`);
+    const cleanedId = cleanId(id);
+    const response = await fetch(`${API_BASE_URL}/folders/${cleanedId}/path`);
     return handleResponse<FileItem[]>(response);
   }
 };
@@ -101,19 +111,22 @@ export const filesApi = {
   },
 
   async getDownloadUrl(id: string): Promise<{ downloadUrl: string; fileName: string; fileType: string; size: number }> {
-    const response = await fetch(`${API_BASE_URL}/files/${id}/download`);
+    const cleanedId = cleanId(id);
+    const response = await fetch(`${API_BASE_URL}/files/${cleanedId}/download`);
     return handleResponse(response);
   },
 
   async delete(id: string): Promise<{ success: boolean }> {
-    const response = await fetch(`${API_BASE_URL}/files/${id}`, {
+    const cleanedId = cleanId(id);
+    const response = await fetch(`${API_BASE_URL}/files/${cleanedId}`, {
       method: 'DELETE'
     });
     return handleResponse(response);
   },
 
   async rename(id: string, name: string): Promise<FileItem> {
-    const response = await fetch(`${API_BASE_URL}/files/${id}`, {
+    const cleanedId = cleanId(id);
+    const response = await fetch(`${API_BASE_URL}/files/${cleanedId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
