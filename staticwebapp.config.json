@@ -17,7 +17,6 @@
     "rewrite": "/amos-cloudstore/index.html",
     "exclude": ["/api/*", "/assets/*", "/amos-cloudstore/assets/*", "/*.{css,scss,js,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot,json}"]
   },
-  },
   "globalHeaders": {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
