@@ -4,10 +4,6 @@
   },
   "routes": [
     {
-      "route": "/amos-cloudstore/api/*",
-      "rewrite": "/api/{*}"
-    },
-    {
       "route": "/",
       "redirect": "/amos-cloudstore"
     }

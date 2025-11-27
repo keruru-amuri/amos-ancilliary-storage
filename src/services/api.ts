@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/amos-cloudstore/api';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
 
 // Types
 export interface FileItem {
