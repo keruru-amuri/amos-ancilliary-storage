@@ -47,11 +47,20 @@ function validateRequired(fields, object) {
 }
 
 function mapEntityToItem(entity) {
+  // Strip any trailing `:0` or similar artifacts from Azure Table Storage
+  const cleanId = typeof entity.rowKey === 'string' 
+    ? entity.rowKey.split(':')[0] 
+    : entity.rowKey;
+  
+  const cleanParentId = entity.parentId && typeof entity.parentId === 'string'
+    ? entity.parentId.split(':')[0]
+    : entity.parentId;
+  
   return {
-    id: entity.rowKey,
+    id: cleanId,
     name: entity.name,
     type: entity.type,
-    parentId: entity.parentId || null,
+    parentId: cleanParentId || null,
     fileType: entity.fileType || undefined,
     blobName: entity.blobName || undefined,
     size: entity.size || 0,

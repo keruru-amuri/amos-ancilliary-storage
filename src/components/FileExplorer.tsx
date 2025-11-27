@@ -16,6 +16,7 @@ interface FileExplorerProps {
   onFileSelect: (file: FileItem) => void;
   selectedFileId?: string;
   onItemsChange?: (folderId: string | null) => void;
+  breadcrumbPath: FileItem[];
 }
 
 export function FileExplorer({
@@ -26,6 +27,7 @@ export function FileExplorer({
   onFileSelect,
   selectedFileId,
   onItemsChange,
+  breadcrumbPath,
 }: FileExplorerProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createType, setCreateType] = useState<'file' | 'folder'>('folder');
@@ -222,7 +224,7 @@ export function FileExplorer({
       <div className="px-6 py-4 border-b border-sidebar-border bg-card">
         <Breadcrumb
           currentFolderId={currentFolderId}
-          items={items}
+          breadcrumbPath={breadcrumbPath}
           onNavigate={setCurrentFolderId}
         />
       </div>

@@ -68,11 +68,33 @@ export default function App() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [breadcrumbPath, setBreadcrumbPath] = useState<FileItem[]>([]);
 
   // Load items from API on mount
   useEffect(() => {
     loadItems();
   }, []);
+
+  // Load breadcrumb path when folder changes
+  useEffect(() => {
+    if (currentFolderId) {
+      loadBreadcrumbPath(currentFolderId);
+    } else {
+      setBreadcrumbPath([]);
+    }
+  }, [currentFolderId]);
+
+  // Load breadcrumb path for current folder
+  const loadBreadcrumbPath = async (folderId: string) => {
+    try {
+      const path = await api.folders.getPath(folderId);
+      setBreadcrumbPath(path);
+    } catch (error: any) {
+      console.error('Failed to load breadcrumb path:', error);
+      // Don't show error toast for breadcrumbs, just use empty path
+      setBreadcrumbPath([]);
+    }
+  };
 
   // Load items for current folder
   const loadItems = async (folderId: string | null = null) => {
@@ -167,6 +189,7 @@ export default function App() {
             onFileSelect={handleFileSelect}
             selectedFileId={selectedFile?.id}
             onItemsChange={loadItems}
+            breadcrumbPath={breadcrumbPath}
           />
         </div>
 
