@@ -18,8 +18,11 @@ module.exports = async function (context, req) {
       return;
     }
     
+    // Clean the ID to remove any Azure Table Storage artifacts like :0
+    const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
+    
     // Find the folder
-    const entities = await queryEntities(`rowKey eq '${id}' and type eq 'folder'`);
+    const entities = await queryEntities(`rowKey eq '${cleanId}' and type eq 'folder'`);
     
     if (entities.length === 0) {
       context.res = createErrorResponse('Folder not found', 404);

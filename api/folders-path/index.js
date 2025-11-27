@@ -6,8 +6,11 @@ async function buildPath(folderId) {
   let currentId = folderId;
   
   while (currentId) {
+    // Clean the ID to remove any Azure Table Storage artifacts
+    const cleanCurrentId = typeof currentId === 'string' ? currentId.split(':')[0] : currentId;
+    
     // Find folder by ID
-    const entities = await queryEntities(`rowKey eq '${currentId}' and type eq 'folder'`);
+    const entities = await queryEntities(`rowKey eq '${cleanCurrentId}' and type eq 'folder'`);
     
     if (entities.length === 0) {
       break;

@@ -10,8 +10,11 @@ module.exports = async function (context, req) {
       return;
     }
     
+    // Clean the ID to remove any Azure Table Storage artifacts like :0
+    const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
+    
     // Find the file
-    const entities = await queryEntities(`rowKey eq '${id}' and type eq 'file'`);
+    const entities = await queryEntities(`rowKey eq '${cleanId}' and type eq 'file'`);
     
     if (entities.length === 0) {
       context.res = createErrorResponse('File not found', 404);
