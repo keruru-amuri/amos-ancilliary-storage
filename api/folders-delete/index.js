@@ -50,22 +50,24 @@ module.exports = async function (context, req) {
     }
     
     // Use efficient INDEX lookup to find the folder
-    const folder = await getEntityByRowKey(id, 'folder');
+    const indexFolder = await getEntityByRowKey(id, 'folder');
     
-    if (!folder) {
+    if (!indexFolder) {
       context.res = createErrorResponse('Folder not found', 404);
       return;
     }
     
     // Get the actual primary entity using parentId as partition key
-    const primaryFolder = await getEntity(folder.parentId || 'root', folder.rowKey);
+    const parentPartition = indexFolder.parentId || 'root';
+    const primaryFolder = await getEntity(parentPartition, id);
     
     if (!primaryFolder) {
       context.res = createErrorResponse('Primary folder entity not found', 404);
       return;
     }
     
-    const deletedCount = await deleteItemRecursive(primaryFolder.partitionKey, primaryFolder.rowKey);
+    // Delete using the correct partition key from primary entity
+    const deletedCount = await deleteItemRecursive(parentPartition, id);
     
     context.res = createSuccessResponse({
       success: true,
