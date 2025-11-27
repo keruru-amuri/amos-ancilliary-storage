@@ -5,7 +5,7 @@
   "routes": [
     {
       "route": "/amos-cloudstore/api/*",
-      "rewrite": "/api/{*segments}"
+      "rewrite": "/api/{*}"
     },
     {
       "route": "/",
