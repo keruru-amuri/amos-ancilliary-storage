@@ -47,7 +47,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // Folder API
 export const foldersApi = {
   async create(name: string, parentId: string | null = null): Promise<FileItem> {
-    const response = await fetch(`${API_BASE_URL}/folders-create`, {
+    const response = await fetch(`${API_BASE_URL}/folders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, parentId })
@@ -57,30 +57,30 @@ export const foldersApi = {
 
   async list(parentId: string | null = null): Promise<FileItem[]> {
     const url = parentId 
-      ? `${API_BASE_URL}/folders-list?parentId=${encodeURIComponent(parentId)}`
-      : `${API_BASE_URL}/folders-list`;
+      ? `${API_BASE_URL}/folders?parentId=${encodeURIComponent(parentId)}`
+      : `${API_BASE_URL}/folders`;
     const response = await fetch(url);
     return handleResponse<FileItem[]>(response);
   },
 
   async delete(id: string): Promise<{ success: boolean; deletedCount: number }> {
-    const response = await fetch(`${API_BASE_URL}/folders-delete?id=${encodeURIComponent(id)}`, {
+    const response = await fetch(`${API_BASE_URL}/folders/${id}`, {
       method: 'DELETE'
     });
     return handleResponse(response);
   },
 
   async rename(id: string, name: string): Promise<FileItem> {
-    const response = await fetch(`${API_BASE_URL}/folders-rename`, {
+    const response = await fetch(`${API_BASE_URL}/folders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, name })
+      body: JSON.stringify({ name })
     });
     return handleResponse<FileItem>(response);
   },
 
   async getPath(id: string): Promise<FileItem[]> {
-    const response = await fetch(`${API_BASE_URL}/folders-path?id=${encodeURIComponent(id)}`);
+    const response = await fetch(`${API_BASE_URL}/folders/${id}/path`);
     return handleResponse<FileItem[]>(response);
   }
 };
@@ -93,7 +93,7 @@ export const filesApi = {
     if (parentId) formData.append('parentId', parentId);
     if (fileType) formData.append('fileType', fileType);
 
-    const response = await fetch(`${API_BASE_URL}/files-upload`, {
+    const response = await fetch(`${API_BASE_URL}/files/upload`, {
       method: 'POST',
       body: formData
     });
@@ -101,30 +101,30 @@ export const filesApi = {
   },
 
   async getDownloadUrl(id: string): Promise<{ downloadUrl: string; fileName: string; fileType: string; size: number }> {
-    const response = await fetch(`${API_BASE_URL}/files-download?id=${encodeURIComponent(id)}`);
+    const response = await fetch(`${API_BASE_URL}/files/${id}/download`);
     return handleResponse(response);
   },
 
   async delete(id: string): Promise<{ success: boolean }> {
-    const response = await fetch(`${API_BASE_URL}/files-delete?id=${encodeURIComponent(id)}`, {
+    const response = await fetch(`${API_BASE_URL}/files/${id}`, {
       method: 'DELETE'
     });
     return handleResponse(response);
   },
 
   async rename(id: string, name: string): Promise<FileItem> {
-    const response = await fetch(`${API_BASE_URL}/files-rename`, {
+    const response = await fetch(`${API_BASE_URL}/files/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, name })
+      body: JSON.stringify({ name })
     });
     return handleResponse<FileItem>(response);
   },
 
   async list(parentId: string | null = null): Promise<FileItem[]> {
     const url = parentId 
-      ? `${API_BASE_URL}/files-list?parentId=${encodeURIComponent(parentId)}`
-      : `${API_BASE_URL}/files-list`;
+      ? `${API_BASE_URL}/files?parentId=${encodeURIComponent(parentId)}`
+      : `${API_BASE_URL}/files`;
     const response = await fetch(url);
     return handleResponse<FileItem[]>(response);
   }
@@ -134,8 +134,8 @@ export const filesApi = {
 export const itemsApi = {
   async list(parentId: string | null = null): Promise<FileItem[]> {
     const url = parentId 
-      ? `${API_BASE_URL}/items-list?parentId=${encodeURIComponent(parentId)}`
-      : `${API_BASE_URL}/items-list`;
+      ? `${API_BASE_URL}/items?parentId=${encodeURIComponent(parentId)}`
+      : `${API_BASE_URL}/items`;
     const response = await fetch(url);
     return handleResponse<FileItem[]>(response);
   }
@@ -155,7 +155,7 @@ export const searchApi = {
 // Storage Stats API
 export const storageApi = {
   async getStats(): Promise<StorageStats> {
-    const response = await fetch(`${API_BASE_URL}/storage-stats`);
+    const response = await fetch(`${API_BASE_URL}/storage/stats`);
     return handleResponse<StorageStats>(response);
   }
 };
