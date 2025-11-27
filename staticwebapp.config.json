@@ -7,11 +7,15 @@
       "route": "/amos-cloudstore/api/*",
       "rewrite": "/api/*",
       "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/",
+      "redirect": "/amos-cloudstore"
     }
   ],
   "navigationFallback": {
     "rewrite": "/amos-cloudstore/index.html",
-    "exclude": ["/api/*", "/*.{css,scss,js,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot,json}"]
+    "exclude": ["/api/*", "/assets/*", "/amos-cloudstore/assets/*", "/*.{css,scss,js,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot,json}"]
   },
   },
   "globalHeaders": {
