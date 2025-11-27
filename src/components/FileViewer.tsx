@@ -12,6 +12,7 @@ interface FileViewerProps {
 export function FileViewer({ file, onClose }: FileViewerProps) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [textContent, setTextContent] = useState<string | null>(null);
 
   // Fetch SAS URL when component mounts or file changes
   useEffect(() => {
@@ -21,6 +22,21 @@ export function FileViewer({ file, onClose }: FileViewerProps) {
         try {
           const result = await api.files.getDownloadUrl(file.id);
           setFileUrl(result.downloadUrl);
+          
+          // For text and markdown files, fetch the actual content
+          const isTextFile = file.name.endsWith('.txt') || file.name.endsWith('.md') || 
+                           file.fileType === 'text' || result.fileType === 'text';
+          
+          if (isTextFile && result.downloadUrl) {
+            try {
+              const response = await fetch(result.downloadUrl);
+              const text = await response.text();
+              setTextContent(text);
+            } catch (error) {
+              console.error('Failed to fetch text content:', error);
+              // Continue without content - will show download option
+            }
+          }
         } catch (error: any) {
           console.error('Failed to get file URL:', error);
           toast.error('Failed to load file: ' + (error.message || 'Unknown error'));
@@ -31,7 +47,7 @@ export function FileViewer({ file, onClose }: FileViewerProps) {
     };
 
     fetchFileUrl();
-  }, [file.id, file.content, file.type]);
+  }, [file.id, file.content, file.type, file.name, file.fileType]);
 
   const handleDownload = async () => {
     try {
@@ -143,12 +159,29 @@ export function FileViewer({ file, onClose }: FileViewerProps) {
 
   const renderFileContent = () => {
     // Text files - check for both fileType and content existence
-    if ((file.fileType === 'text' || file.name.endsWith('.txt') || file.name.endsWith('.md')) && file.content !== undefined) {
-      return (
-        <div className="h-full p-6 overflow-auto bg-card">
-          <pre className="whitespace-pre-wrap break-words">{file.content || '(Empty file)'}</pre>
-        </div>
-      );
+    // Use fetched textContent or file.content
+    const contentToDisplay = textContent || file.content;
+    const isTextOrMarkdown = file.fileType === 'text' || file.name.endsWith('.txt') || file.name.endsWith('.md');
+    
+    if (isTextOrMarkdown) {
+      if (loading) {
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading file content...</p>
+            </div>
+          </div>
+        );
+      }
+      
+      if (contentToDisplay !== null && contentToDisplay !== undefined) {
+        return (
+          <div className="h-full p-6 overflow-auto bg-card">
+            <pre className="whitespace-pre-wrap break-words">{contentToDisplay || '(Empty file)'}</pre>
+          </div>
+        );
+      }
     }
 
     // PDF files
