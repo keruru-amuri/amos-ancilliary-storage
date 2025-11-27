@@ -3,6 +3,16 @@ import { FileItem } from '../App';
 import api from '../services/api';
 import { Folder, File, MoreVertical, Edit2, Trash2, Download } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 interface FileItemComponentProps {
   item: FileItem;
@@ -24,6 +34,7 @@ export function FileItemComponent({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(item.name);
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -173,7 +184,7 @@ export function FileItemComponent({
             </button>
             <button
               onClick={() => {
-                onDelete(item.id);
+                setShowDeleteDialog(true);
                 setShowMenu(false);
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-destructive hover:bg-destructive/10 transition-colors"
@@ -184,6 +195,40 @@ export function FileItemComponent({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{item.name}"?
+              {item.type === 'folder' && (
+                <span className="block mt-2 text-destructive font-medium">
+                  This will also delete all files and folders inside it. This action cannot be undone.
+                </span>
+              )}
+              {item.type === 'file' && (
+                <span className="block mt-2">
+                  This action cannot be undone.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete(item.id);
+                setShowDeleteDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
