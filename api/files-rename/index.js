@@ -1,4 +1,4 @@
-const { queryEntities, updateEntity } = require('../shared/storageService');
+const { getEntity, getEntityByRowKey, queryEntities, updateEntity } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, validateRequired, mapEntityToItem, handleError } = require('../shared/utils');
 
 module.exports = async function (context, req) {
@@ -18,18 +18,22 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Query for file by rowKey and type (files don't use INDEX partition)
-    const filter = `rowKey eq '${id}' and type eq 'file'`;
+    // Use efficient INDEX lookup to find the file
+    const indexFile = await getEntityByRowKey(id, 'file');
     
-    // Find the file
-    const entities = await queryEntities(filter);
-    
-    if (entities.length === 0) {
+    if (!indexFile) {
       context.res = createErrorResponse('File not found', 404);
       return;
     }
     
-    const file = entities[0];
+    // Get the primary entity
+    const parentPartition = indexFile.parentId || 'root';
+    const file = await getEntity(parentPartition, id);
+    
+    if (!file) {
+      context.res = createErrorResponse('Primary file entity not found', 404);
+      return;
+    }
     
     // Check for duplicate name in same parent
     const partition = file.parentId || 'root';
@@ -44,9 +48,13 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Update the file
+    // Update the primary file
     file.name = name;
     await updateEntity(file);
+    
+    // Update the INDEX entity
+    indexFile.name = name;
+    await updateEntity(indexFile);
     
     const responseItem = mapEntityToItem(file);
     context.res = createSuccessResponse(responseItem);

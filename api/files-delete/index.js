@@ -1,4 +1,4 @@
-const { queryEntities, deleteEntity, deleteBlob } = require('../shared/storageService');
+const { getEntity, deleteEntity, deleteBlob, getEntityByRowKey } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, handleError } = require('../shared/utils');
 
 module.exports = async function (context, req) {
@@ -10,26 +10,38 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Query for file by rowKey and type (files don't use INDEX partition)
-    const filter = `rowKey eq '${id}' and type eq 'file'`;
+    // Use efficient INDEX lookup to find the file
+    const indexFile = await getEntityByRowKey(id, 'file');
     
-    // Find the file
-    const entities = await queryEntities(filter);
-    
-    if (entities.length === 0) {
+    if (!indexFile) {
       context.res = createErrorResponse('File not found', 404);
       return;
     }
     
-    const file = entities[0];
+    // Get the actual primary entity using parentId as partition key
+    const parentPartition = indexFile.parentId || 'root';
+    const primaryFile = await getEntity(parentPartition, id);
     
-    // Delete the blob if it exists
-    if (file.blobName) {
-      await deleteBlob(file.blobName);
+    if (!primaryFile) {
+      context.res = createErrorResponse('Primary file entity not found', 404);
+      return;
     }
     
-    // Delete the metadata
-    await deleteEntity(file.partitionKey, file.rowKey);
+    // Delete the blob if it exists
+    if (primaryFile.blobName) {
+      await deleteBlob(primaryFile.blobName);
+    }
+    
+    // Delete the primary metadata
+    await deleteEntity(parentPartition, id);
+    
+    // Delete the INDEX entity
+    try {
+      await deleteEntity('INDEX', id);
+    } catch (error) {
+      // Index entity might not exist for old files, continue
+      context.log.warn(`Index entity not found for file ${id}, skipping`);
+    }
     
     context.res = createSuccessResponse({ success: true });
     

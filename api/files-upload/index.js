@@ -112,6 +112,22 @@ module.exports = async function (context, req) {
     context.log('Creating metadata entity');
     await createEntity(entity);
     
+    // Create INDEX entity for efficient lookups
+    const indexEntity = {
+      partitionKey: 'INDEX',
+      rowKey: fileId,
+      name: uploadedFile.originalFilename,
+      type: 'file',
+      parentId: parentId || null,
+      fileType: fileType,
+      blobName: blobName,
+      size: uploadedFile.size,
+      createdAt: new Date().toISOString()
+    };
+    
+    context.log('Creating INDEX entity');
+    await createEntity(indexEntity);
+    
     context.log('Upload completed successfully');
     
     const responseItem = mapEntityToItem(entity);
