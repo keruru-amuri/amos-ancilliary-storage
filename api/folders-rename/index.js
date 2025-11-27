@@ -18,11 +18,12 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Clean the ID to remove any Azure Table Storage artifacts like :0
+    // Try to find the folder with the ID or ID with Azure Table Storage artifacts
     const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
+    const filter = `(rowKey eq '${cleanId}' or rowKey eq '${cleanId}:0') and type eq 'folder'`;
     
     // Find the folder
-    const entities = await queryEntities(`rowKey eq '${cleanId}' and type eq 'folder'`);
+    const entities = await queryEntities(filter);
     
     if (entities.length === 0) {
       context.res = createErrorResponse('Folder not found', 404);
@@ -33,8 +34,8 @@ module.exports = async function (context, req) {
     
     // Check for duplicate name in same parent
     const partition = folder.parentId || 'root';
-    const filter = `PartitionKey eq '${partition}' and name eq '${name}' and type eq 'folder' and rowKey ne '${id}'`;
-    const duplicates = await queryEntities(filter);
+    const duplicateFilter = `PartitionKey eq '${partition}' and name eq '${name}' and type eq 'folder' and rowKey ne '${id}'`;
+    const duplicates = await queryEntities(duplicateFilter);
     
     if (duplicates.length > 0) {
       context.res = createErrorResponse(
