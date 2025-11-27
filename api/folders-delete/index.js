@@ -57,7 +57,15 @@ module.exports = async function (context, req) {
       return;
     }
     
-    const deletedCount = await deleteItemRecursive(folder.partitionKey, folder.rowKey);
+    // Get the actual primary entity using parentId as partition key
+    const primaryFolder = await getEntity(folder.parentId || 'root', folder.rowKey);
+    
+    if (!primaryFolder) {
+      context.res = createErrorResponse('Primary folder entity not found', 404);
+      return;
+    }
+    
+    const deletedCount = await deleteItemRecursive(primaryFolder.partitionKey, primaryFolder.rowKey);
     
     context.res = createSuccessResponse({
       success: true,
