@@ -1,0 +1,85 @@
+import React, { useState, useEffect } from 'react';
+import api from '../services/api';
+import { HardDrive } from 'lucide-react';
+
+interface StorageStatsProps {
+  totalItems: number;
+}
+
+export function StorageStats({ totalItems }: StorageStatsProps) {
+  const [stats, setStats] = useState<{
+    usedGB: number;
+    totalGB: number;
+    itemCount: number;
+    fileCount: number;
+    folderCount: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const result = await api.storage.getStats();
+        setStats({
+          usedGB: parseFloat(result.usedGB || '0'),
+          totalGB: parseFloat(result.totalGB || '50'),
+          itemCount: result.itemCount,
+          fileCount: result.fileCount,
+          folderCount: result.folderCount
+        });
+      } catch (error) {
+        console.error('Failed to fetch storage stats:', error);
+        // Fall back to defaults
+        setStats({
+          usedGB: 0,
+          totalGB: 50,
+          itemCount: totalItems,
+          fileCount: 0,
+          folderCount: 0
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [totalItems]);
+
+  const usedGB = stats?.usedGB || 0;
+  const totalGB = stats?.totalGB || 50;
+  const percentage = totalGB > 0 ? (usedGB / totalGB) * 100 : 0;
+
+  return (
+    <div className="p-6 border-t border-sidebar-border bg-card/50">
+      <div className="flex items-center gap-2 mb-3">
+        <HardDrive className="w-4 h-4 text-muted-foreground" />
+        <p className="text-muted-foreground">Storage Usage</p>
+      </div>
+      
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-primary h-full rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(percentage, 100)}%` }}
+            />
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="text-foreground">{usedGB.toFixed(1)} GB used</span>
+            <span className="text-muted-foreground">{totalGB.toFixed(0)} GB total</span>
+          </div>
+          
+          <div className="pt-2 border-t border-border space-y-1">
+            <p className="text-muted-foreground">{stats?.itemCount || 0} total items</p>
+            <p className="text-muted-foreground text-sm">{stats?.fileCount || 0} files, {stats?.folderCount || 0} folders</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

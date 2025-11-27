@@ -1,0 +1,19 @@
+{
+  "name": "cloudstore-api",
+  "version": "1.0.0",
+  "description": "Azure Functions API for CloudStore file management",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@azure/data-tables": "^13.2.2",
+    "@azure/identity": "^4.0.0",
+    "@azure/storage-blob": "^12.17.0",
+    "multiparty": "^4.2.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@azure/functions": "^4.5.0"
+  }
+}
