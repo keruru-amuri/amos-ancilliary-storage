@@ -1,35 +1,57 @@
 const multiparty = require('multiparty');
+const { Readable } = require('stream');
 const { v4: uuidv4 } = require('uuid');
 const { createEntity, uploadBlob, getBlobNameForFile, getContentTypeFromFileName, determineFileType } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, mapEntityToItem, handleError } = require('../shared/utils');
 
 function parseMultipartForm(req) {
   return new Promise((resolve, reject) => {
-    const form = new multiparty.Form();
-    
-    form.parse(req, (err, fields, files) => {
-      if (err) {
-        reject(err);
+    try {
+      const form = new multiparty.Form({
+        maxFieldsSize: 200 * 1024 * 1024 // 200 MB
+      });
+      
+      // Create a readable stream from the request
+      let stream;
+      if (req.body && Buffer.isBuffer(req.body)) {
+        stream = Readable.from(req.body);
+      } else if (req.rawBody) {
+        stream = Readable.from(Buffer.from(req.rawBody, 'binary'));
+      } else {
+        reject(new Error('No request body available'));
         return;
       }
       
-      resolve({ fields, files });
-    });
+      // Set headers for multiparty
+      stream.headers = req.headers;
+      
+      form.parse(stream, (err, fields, files) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        resolve({ fields, files });
+      });
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
 module.exports = async function (context, req) {
   try {
-    context.log('Upload started - parsing form data');
+    context.log('Upload started');
+    context.log('Content-Type:', req.headers['content-type']);
+    context.log('Body type:', typeof req.body);
+    context.log('Has rawBody:', !!req.rawBody);
     
     // Parse multipart form data
     const { fields, files } = await parseMultipartForm(req);
     
-    context.log('Form parsed:', { 
-      hasFile: !!files.file, 
-      fileCount: files.file?.length || 0,
-      fields: Object.keys(fields)
-    });
+    context.log('Form parsed successfully');
+    context.log('Fields:', Object.keys(fields));
+    context.log('Files:', Object.keys(files));
     
     if (!files.file || files.file.length === 0) {
       context.log.error('No file uploaded');
@@ -44,6 +66,7 @@ module.exports = async function (context, req) {
     context.log('File info:', {
       name: uploadedFile.originalFilename,
       size: uploadedFile.size,
+      path: uploadedFile.path,
       parentId: parentId
     });
     
@@ -65,7 +88,12 @@ module.exports = async function (context, req) {
     context.log('Blob uploaded successfully');
     
     // Clean up temp file
-    fs.unlinkSync(uploadedFile.path);
+    try {
+      fs.unlinkSync(uploadedFile.path);
+      context.log('Temp file cleaned up');
+    } catch (cleanupError) {
+      context.log.warn('Failed to cleanup temp file:', cleanupError.message);
+    }
     
     // Create metadata entity
     const partition = parentId || 'root';
@@ -95,7 +123,8 @@ module.exports = async function (context, req) {
     context.log.error('Error details:', {
       message: error.message,
       code: error.code,
-      statusCode: error.statusCode
+      statusCode: error.statusCode,
+      name: error.name
     });
     await handleError(context, error, 'Failed to upload file');
   }
