@@ -133,6 +133,26 @@ async function queryEntities(filter) {
   return entities;
 }
 
+// Efficient lookup by rowKey using INDEX partition
+async function getEntityByRowKey(rowKey, type = null) {
+  const client = getTableClient();
+  try {
+    const entity = await client.getEntity('INDEX', rowKey);
+    
+    // Optionally filter by type
+    if (type && entity.type !== type) {
+      return null;
+    }
+    
+    return entity;
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 // Blob Storage Operations
 async function uploadBlob(blobName, buffer, contentType) {
   const container = getContainerClient();
@@ -298,6 +318,7 @@ module.exports = {
   updateEntity,
   deleteEntity,
   queryEntities,
+  getEntityByRowKey,
   
   // Blob Storage
   uploadBlob,

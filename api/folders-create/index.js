@@ -31,21 +31,39 @@ module.exports = async function (context, req) {
     
     // Create folder entity
     const folderId = uuidv4();
-    const entity = {
+    const timestamp = new Date().toISOString();
+    
+    // Primary entity (for parent-child listing)
+    const primaryEntity = {
       partitionKey: partition,
       rowKey: folderId,
       name: name,
       type: 'folder',
       parentId: parentId || null,
       size: 0,
-      createdAt: new Date().toISOString()
+      createdAt: timestamp
     };
     
-    context.log('Creating entity:', JSON.stringify(entity));
-    await createEntity(entity);
-    context.log('Entity created successfully');
+    // Index entity (for efficient direct ID lookup)
+    const indexEntity = {
+      partitionKey: 'INDEX',
+      rowKey: folderId,
+      name: name,
+      type: 'folder',
+      parentId: parentId || null,
+      size: 0,
+      createdAt: timestamp
+    };
     
-    const responseItem = mapEntityToItem(entity);
+    context.log('Creating primary entity:', JSON.stringify(primaryEntity));
+    await createEntity(primaryEntity);
+    context.log('Primary entity created successfully');
+    
+    context.log('Creating index entity:', JSON.stringify(indexEntity));
+    await createEntity(indexEntity);
+    context.log('Index entity created successfully');
+    
+    const responseItem = mapEntityToItem(primaryEntity);
     context.res = createSuccessResponse(responseItem, 201);
     
   } catch (error) {

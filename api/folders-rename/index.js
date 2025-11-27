@@ -1,4 +1,4 @@
-const { queryEntities, updateEntity } = require('../shared/storageService');
+const { queryEntities, updateEntity, getEntityByRowKey, getEntity } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, validateRequired, mapEntityToItem, handleError } = require('../shared/utils');
 
 module.exports = async function (context, req) {
@@ -18,22 +18,24 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Try to find the folder with the ID or ID with Azure Table Storage artifacts
-    const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
-    const filter = `(rowKey eq '${cleanId}' or rowKey eq '${cleanId}:0') and type eq 'folder'`;
+    // Use efficient INDEX lookup to find the folder
+    const indexFolder = await getEntityByRowKey(id, 'folder');
     
-    // Find the folder
-    const entities = await queryEntities(filter);
-    
-    if (entities.length === 0) {
+    if (!indexFolder) {
       context.res = createErrorResponse('Folder not found', 404);
       return;
     }
     
-    const folder = entities[0];
+    // Get the primary entity
+    const primaryFolder = await getEntity(indexFolder.partitionKey, indexFolder.rowKey);
+    
+    if (!primaryFolder) {
+      context.res = createErrorResponse('Folder not found', 404);
+      return;
+    }
     
     // Check for duplicate name in same parent
-    const partition = folder.parentId || 'root';
+    const partition = primaryFolder.parentId || 'root';
     const duplicateFilter = `PartitionKey eq '${partition}' and name eq '${name}' and type eq 'folder' and rowKey ne '${id}'`;
     const duplicates = await queryEntities(duplicateFilter);
     
@@ -45,11 +47,14 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Update the folder
-    folder.name = name;
-    await updateEntity(folder);
+    // Update both primary and index entities
+    primaryFolder.name = name;
+    indexFolder.name = name;
     
-    const responseItem = mapEntityToItem(folder);
+    await updateEntity(primaryFolder);
+    await updateEntity(indexFolder);
+    
+    const responseItem = mapEntityToItem(primaryFolder);
     context.res = createSuccessResponse(responseItem);
     
   } catch (error) {

@@ -1,4 +1,4 @@
-const { getEntity, deleteEntity, queryEntities } = require('../shared/storageService');
+const { getEntity, deleteEntity, queryEntities, getEntityByRowKey } = require('../shared/storageService');
 const { deleteBlob } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, handleError } = require('../shared/utils');
 
@@ -20,12 +20,20 @@ async function deleteItemRecursive(partitionKey, rowKey) {
     for (const child of children) {
       deletedCount += await deleteItemRecursive(child.partitionKey, child.rowKey);
     }
+    
+    // Delete the index entity for this folder
+    try {
+      await deleteEntity('INDEX', rowKey);
+    } catch (error) {
+      // Index entity might not exist for old folders, continue
+      console.warn(`Index entity not found for folder ${rowKey}, skipping`);
+    }
   } else if (item.type === 'file' && item.blobName) {
     // Delete the blob
     await deleteBlob(item.blobName);
   }
   
-  // Delete the item itself
+  // Delete the primary item itself
   await deleteEntity(partitionKey, rowKey);
   deletedCount++;
   
@@ -41,23 +49,14 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Try multiple query strategies to find the folder
-    const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
+    // Use efficient INDEX lookup to find the folder
+    const folder = await getEntityByRowKey(id, 'folder');
     
-    // First try clean ID
-    let entities = await queryEntities(`rowKey eq '${cleanId}' and type eq 'folder'`);
-    
-    // If not found, try with :0 suffix
-    if (entities.length === 0) {
-      entities = await queryEntities(`rowKey eq '${cleanId}:0' and type eq 'folder'`);
-    }
-    
-    if (entities.length === 0) {
+    if (!folder) {
       context.res = createErrorResponse('Folder not found', 404);
       return;
     }
     
-    const folder = entities[0];
     const deletedCount = await deleteItemRecursive(folder.partitionKey, folder.rowKey);
     
     context.res = createSuccessResponse({

@@ -1,4 +1,4 @@
-const { queryEntities } = require('../shared/storageService');
+const { getEntityByRowKey } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, mapEntityToItem, handleError } = require('../shared/utils');
 
 async function buildPath(folderId) {
@@ -6,22 +6,13 @@ async function buildPath(folderId) {
   let currentId = folderId;
   
   while (currentId) {
-    // Clean the ID and try multiple query strategies
-    const cleanCurrentId = typeof currentId === 'string' ? currentId.split(':')[0] : currentId;
+    // Efficient point query using INDEX partition
+    const folder = await getEntityByRowKey(currentId, 'folder');
     
-    // First try clean ID
-    let entities = await queryEntities(`rowKey eq '${cleanCurrentId}' and type eq 'folder'`);
-    
-    // If not found, try with :0 suffix
-    if (entities.length === 0) {
-      entities = await queryEntities(`rowKey eq '${cleanCurrentId}:0' and type eq 'folder'`);
-    }
-    
-    if (entities.length === 0) {
+    if (!folder) {
       break;
     }
     
-    const folder = entities[0];
     path.unshift(mapEntityToItem(folder));
     currentId = folder.parentId;
   }

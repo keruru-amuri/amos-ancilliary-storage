@@ -18,9 +18,8 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Try to find the file with the ID or ID with Azure Table Storage artifacts
-    const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
-    const filter = `(rowKey eq '${cleanId}' or rowKey eq '${cleanId}:0') and type eq 'file'`;
+    // Query for file by rowKey and type (files don't use INDEX partition)
+    const filter = `rowKey eq '${id}' and type eq 'file'`;
     
     // Find the file
     const entities = await queryEntities(filter);
