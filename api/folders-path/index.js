@@ -6,12 +6,16 @@ async function buildPath(folderId) {
   let currentId = folderId;
   
   while (currentId) {
-    // Clean the ID and query for both formats
+    // Clean the ID and try multiple query strategies
     const cleanCurrentId = typeof currentId === 'string' ? currentId.split(':')[0] : currentId;
-    const filter = `(rowKey eq '${cleanCurrentId}' or rowKey eq '${cleanCurrentId}:0') and type eq 'folder'`;
     
-    // Find folder by ID
-    const entities = await queryEntities(filter);
+    // First try clean ID
+    let entities = await queryEntities(`rowKey eq '${cleanCurrentId}' and type eq 'folder'`);
+    
+    // If not found, try with :0 suffix
+    if (entities.length === 0) {
+      entities = await queryEntities(`rowKey eq '${cleanCurrentId}:0' and type eq 'folder'`);
+    }
     
     if (entities.length === 0) {
       break;

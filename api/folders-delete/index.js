@@ -41,11 +41,16 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Try to find the folder with the ID or ID with Azure Table Storage artifacts
-    // Query for both formats to handle different storage scenarios
+    // Try multiple query strategies to find the folder
     const cleanId = typeof id === 'string' ? id.split(':')[0] : id;
-    const filter = `(rowKey eq '${cleanId}' or rowKey eq '${cleanId}:0') and type eq 'folder'`;
-    const entities = await queryEntities(filter);
+    
+    // First try clean ID
+    let entities = await queryEntities(`rowKey eq '${cleanId}' and type eq 'folder'`);
+    
+    // If not found, try with :0 suffix
+    if (entities.length === 0) {
+      entities = await queryEntities(`rowKey eq '${cleanId}:0' and type eq 'folder'`);
+    }
     
     if (entities.length === 0) {
       context.res = createErrorResponse('Folder not found', 404);
