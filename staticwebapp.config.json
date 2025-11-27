@@ -5,8 +5,7 @@
   "routes": [
     {
       "route": "/amos-cloudstore/api/*",
-      "rewrite": "/api/*",
-      "allowedRoles": ["anonymous"]
+      "rewrite": "/api/{*segments}"
     },
     {
       "route": "/",
