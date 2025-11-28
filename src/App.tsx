@@ -183,31 +183,33 @@ export default function App() {
       <Header />
       
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* File Explorer Sidebar */}
-        <div className={`${selectedFile ? 'w-80 lg:w-96' : 'w-full md:w-96'} border-r border-border flex-shrink-0`}>
-          <FileExplorer
-            items={items}
-            setItems={setItems}
-            currentFolderId={currentFolderId}
-            setCurrentFolderId={setCurrentFolderId}
-            onFileSelect={handleFileSelect}
-            selectedFileId={selectedFile?.id}
-            onItemsChange={loadItems}
-            breadcrumbPath={breadcrumbPath}
-          />
+        <div className={`${selectedFile ? 'w-80 lg:w-96' : 'w-full md:w-96'} border-r border-border flex-shrink-0 flex flex-col min-h-0`}>
+          <div className="flex-1 min-h-0">
+            <FileExplorer
+              items={items}
+              setItems={setItems}
+              currentFolderId={currentFolderId}
+              setCurrentFolderId={setCurrentFolderId}
+              onFileSelect={handleFileSelect}
+              selectedFileId={selectedFile?.id}
+              onItemsChange={loadItems}
+              breadcrumbPath={breadcrumbPath}
+            />
+          </div>
         </div>
 
         {/* File Viewer or Empty State */}
         {selectedFile ? (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <FileViewer
               file={selectedFile}
               onClose={handleFileClose}
             />
           </div>
         ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center bg-card">
+          <div className="hidden md:flex flex-1 min-h-0 items-center justify-center bg-card">
             <div className="text-center max-w-md px-6">
               <div className="mb-4 flex justify-center">
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">

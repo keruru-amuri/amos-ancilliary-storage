@@ -308,15 +308,10 @@ export function FileExplorer({
   };
 
   return (
-    <div className="flex flex-col h-full bg-sidebar">
-      {/* Header */}
-      <div className="p-6 border-b border-sidebar-border">
-        <h2>File Explorer</h2>
-        <p className="text-muted-foreground mt-1">Manage your files and folders</p>
-      </div>
+    <div className="flex flex-col h-full min-h-0 bg-sidebar">
 
       {/* Breadcrumb Navigation */}
-      <div className="px-6 py-4 border-b border-sidebar-border bg-card">
+      <div className="px-6 py-4 border-b border-sidebar-border bg-card flex-shrink-0">
         <Breadcrumb
           currentFolderId={currentFolderId}
           breadcrumbPath={breadcrumbPath}
@@ -325,7 +320,7 @@ export function FileExplorer({
       </div>
 
       {/* Action Buttons */}
-      <div className="p-6 border-b border-sidebar-border flex gap-3">
+      <div className="p-6 border-b border-sidebar-border flex gap-3 flex-wrap flex-shrink-0">
         <button
           onClick={() => {
             setCreateType('folder');
@@ -352,7 +347,7 @@ export function FileExplorer({
 
       {/* Go Up Button */}
       {currentFolderId && (
-        <div className="px-6 pt-4">
+        <div className="px-6 pt-4 flex-shrink-0">
           <button
             onClick={handleGoUp}
             className="flex items-center gap-2 px-3 py-2 w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-[var(--radius)] transition-colors"
@@ -364,7 +359,7 @@ export function FileExplorer({
       )}
 
       {/* File/Folder List */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {currentItems.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
