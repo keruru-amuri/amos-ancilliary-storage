@@ -32,6 +32,8 @@ export function UploadConfirmationModal({
 }: UploadConfirmationModalProps) {
   const totalSize = files.reduce((acc, file) => acc + file.size, 0);
   const totalCount = files.length;
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+  const hasLargeFiles = files.some(file => file.size > 50 * 1024 * 1024); // Warn for files > 50MB
 
   return (
     <div
@@ -73,6 +75,21 @@ export function UploadConfirmationModal({
               </span>
             </div>
           </div>
+
+          {/* Large File Warning */}
+          {hasLargeFiles && !isUploading && (
+            <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-[var(--radius)] text-sm">
+              <div className="flex gap-2">
+                <span className="text-yellow-600 dark:text-yellow-400">⚠️</span>
+                <div>
+                  <div className="font-medium text-yellow-700 dark:text-yellow-300">Large file detected</div>
+                  <div className="text-yellow-600/90 dark:text-yellow-400/90 mt-1">
+                    Files larger than 50 MB may take longer to upload. Maximum file size is 100 MB.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Progress Section */}
           {isUploading && (

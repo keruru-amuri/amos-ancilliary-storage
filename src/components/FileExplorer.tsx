@@ -89,6 +89,17 @@ export function FileExplorer({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    // Check file sizes before proceeding
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB in bytes
+    const oversizedFiles = Array.from(files).filter(file => file.size > MAX_FILE_SIZE);
+    
+    if (oversizedFiles.length > 0) {
+      const fileNames = oversizedFiles.map(f => f.name).join(', ');
+      toast.error(`The following files exceed the 100 MB limit: ${fileNames}`);
+      event.target.value = '';
+      return;
+    }
+
     // Store selected files and show confirmation modal
     setSelectedFiles(Array.from(files));
     setShowUploadModal(true);

@@ -34,6 +34,15 @@ class ApiError extends Error {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    // Handle specific HTTP status codes
+    if (response.status === 413) {
+      throw new ApiError(
+        413,
+        'File is too large. Maximum file size is 100 MB.',
+        { limit: '100 MB' }
+      );
+    }
+    
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new ApiError(
       response.status,

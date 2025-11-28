@@ -8,7 +8,10 @@ function parseMultipartForm(req) {
   return new Promise((resolve, reject) => {
     try {
       const form = new multiparty.Form({
-        maxFieldsSize: 200 * 1024 * 1024 // 200 MB
+        maxFieldsSize: 100 * 1024 * 1024, // 100 MB for fields
+        maxFilesSize: 100 * 1024 * 1024,   // 100 MB total for files
+        maxFields: 10,                      // Limit number of fields
+        autoFiles: true                     // Store files to disk automatically
       });
       
       // Create a readable stream from the request
@@ -27,7 +30,14 @@ function parseMultipartForm(req) {
       
       form.parse(stream, (err, fields, files) => {
         if (err) {
-          reject(err);
+          // Provide more specific error messages
+          if (err.message && err.message.includes('maxFieldsSize')) {
+            reject(new Error('File size exceeds maximum allowed size of 100 MB'));
+          } else if (err.message && err.message.includes('maxFilesSize')) {
+            reject(new Error('Total upload size exceeds maximum allowed size of 100 MB'));
+          } else {
+            reject(err);
+          }
           return;
         }
         
