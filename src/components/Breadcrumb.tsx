@@ -24,7 +24,7 @@ export function Breadcrumb({ currentFolderId, breadcrumbPath, onNavigate }: Brea
           )}
           <button
             onClick={() => onNavigate(segment.id)}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius)] transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius)] transition-colors ${
               index === path.length - 1
                 ? 'text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
