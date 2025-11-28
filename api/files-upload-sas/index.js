@@ -1,6 +1,6 @@
 const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 const { v4: uuidv4 } = require('uuid');
-const { createEntity, getBlobNameForFile } = require('../shared/storageService');
+const { createEntity, getBlobNameForFile, getContainerName } = require('../shared/storageService');
 const { createSuccessResponse, createErrorResponse, mapEntityToItem } = require('../shared/utils');
 
 module.exports = async function (context, req) {
@@ -17,12 +17,43 @@ module.exports = async function (context, req) {
     // Get storage account credentials
     const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
     const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
-    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'files';
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const containerName = getContainerName();
 
-    if (!accountName || !accountKey) {
+    if (!accountName && !connectionString) {
       context.log.error('Storage account credentials not configured');
       context.res = createErrorResponse('Storage configuration error', 500);
       return;
+    }
+
+    // Ensure container exists
+    try {
+      let blobServiceClient;
+      if (connectionString) {
+        blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+      } else if (accountKey) {
+        const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+        blobServiceClient = new BlobServiceClient(
+          `https://${accountName}.blob.core.windows.net`,
+          sharedKeyCredential
+        );
+      } else {
+        context.log.error('No valid credentials for container creation');
+        context.res = createErrorResponse('Storage configuration error', 500);
+        return;
+      }
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const exists = await containerClient.exists();
+      
+      if (!exists) {
+        context.log(`Creating container: ${containerName}`);
+        await containerClient.create();
+        context.log('Container created successfully');
+      }
+    } catch (containerError) {
+      context.log.error('Container check/creation failed:', containerError);
+      // Continue - container might exist but we lack permissions to check
     }
 
     // Generate unique file ID and blob name
@@ -31,8 +62,30 @@ module.exports = async function (context, req) {
 
     context.log('Generated blob name:', blobName);
 
-    // Create shared key credential
-    const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+    // Create shared key credential for SAS token
+    let sharedKeyCredential;
+    let actualAccountName = accountName;
+    
+    if (connectionString) {
+      // Extract account name and key from connection string
+      const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+      const accountKeyMatch = connectionString.match(/AccountKey=([^;]+)/);
+      
+      if (accountNameMatch && accountKeyMatch) {
+        actualAccountName = accountNameMatch[1];
+        sharedKeyCredential = new StorageSharedKeyCredential(actualAccountName, accountKeyMatch[1]);
+      } else {
+        context.log.error('Could not parse connection string');
+        context.res = createErrorResponse('Storage configuration error', 500);
+        return;
+      }
+    } else if (accountKey) {
+      sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+    } else {
+      context.log.error('No credentials available for SAS token generation');
+      context.res = createErrorResponse('SAS token requires account key', 500);
+      return;
+    }
 
     // Set SAS token expiration (1 hour from now)
     const startsOn = new Date();
@@ -55,9 +108,11 @@ module.exports = async function (context, req) {
     ).toString();
 
     // Construct the full SAS URL
-    const sasUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sasToken}`;
+    const sasUrl = `https://${actualAccountName}.blob.core.windows.net/${containerName}/${blobName}?${sasToken}`;
 
     context.log('SAS token generated successfully');
+    context.log('Container:', containerName);
+    context.log('Account:', actualAccountName);
 
     // Return SAS URL and metadata
     context.res = createSuccessResponse({

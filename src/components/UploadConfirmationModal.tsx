@@ -120,25 +120,53 @@ export function UploadConfirmationModal({
           <div className="space-y-2">
             <h4 className="text-sm font-medium mb-2">Files to upload:</h4>
             <div className="space-y-1 max-h-60 overflow-y-auto">
-              {files.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 p-2 bg-background border border-border rounded-[var(--radius)] hover:bg-accent/10 transition-colors"
-                >
-                  <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{file.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatFileSize(file.size)}
+              {files.map((file, index) => {
+                const isCurrentFile = isUploading && uploadProgress.current === index + 1;
+                const isCompleted = isUploading && uploadProgress.current > index + 1;
+                const filePercentage = isCurrentFile && uploadProgress.bytesUploaded && uploadProgress.totalBytes
+                  ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)
+                  : 0;
+                
+                return (
+                  <div
+                    key={index}
+                    className={`flex flex-col gap-2 p-2 bg-background border rounded-[var(--radius)] transition-colors ${
+                      isCurrentFile ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <File className={`w-4 h-4 flex-shrink-0 ${isCurrentFile ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{file.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatFileSize(file.size)}
+                        </div>
+                      </div>
+                      {isCompleted && (
+                        <span className="text-xs text-green-600 dark:text-green-400 flex-shrink-0">
+                          ✓
+                        </span>
+                      )}
+                      {isCurrentFile && (
+                        <span className="text-xs text-primary flex-shrink-0 font-medium">
+                          {filePercentage}%
+                        </span>
+                      )}
                     </div>
+                    
+                    {/* Individual file progress bar */}
+                    {isCurrentFile && uploadProgress.bytesUploaded !== undefined && (
+                      <div className="space-y-1">
+                        <Progress value={filePercentage} className="h-1.5" />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{formatFileSize(uploadProgress.bytesUploaded || 0)}</span>
+                          <span>{formatFileSize(uploadProgress.totalBytes || file.size)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {isUploading && uploadProgress.current > index && (
-                    <span className="text-xs text-green-600 dark:text-green-400 flex-shrink-0">
-                      ✓
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

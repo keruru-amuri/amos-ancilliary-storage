@@ -105,6 +105,16 @@ export async function uploadFileWithChunks(
 
   } catch (error: any) {
     console.error('Upload failed:', error);
+    
+    // Provide more specific error messages
+    if (error.message?.includes('container does not exist')) {
+      throw new Error('Storage container not configured. Please contact administrator.');
+    } else if (error.message?.includes('SAS token')) {
+      throw new Error('Upload token expired or invalid. Please try again.');
+    } else if (error.message?.includes('network')) {
+      throw new Error('Network error. Please check your connection and try again.');
+    }
+    
     throw new Error(error.message || 'Upload failed');
   }
 }

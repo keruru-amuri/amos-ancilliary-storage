@@ -12,6 +12,11 @@ const useConnectionString = process.env.USE_CONNECTION_STRING === 'true';
 const TABLE_NAME = "filesMetadata";
 const CONTAINER_NAME = "cloudstore-files";
 
+// Helper function to get container name
+function getContainerName() {
+  return CONTAINER_NAME;
+}
+
 // Determine authentication method
 // Priority: 1) Connection String (if USE_CONNECTION_STRING=true), 2) Account Key, 3) Managed Identity
 const useManagedIdentity = !useConnectionString && !accountKey;
@@ -332,6 +337,7 @@ module.exports = {
   getContentTypeFromFileName,
   determineFileType,
   initializeStorage,
+  getContainerName,
   
   // Constants
   TABLE_NAME,
