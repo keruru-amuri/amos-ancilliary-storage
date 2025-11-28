@@ -126,12 +126,14 @@ export function FileExplorer({
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       
-      // Initial progress for this file
+      // Initial progress for this file (0%)
       setUploadProgress({
         current: i + 1,
         total: totalFiles,
         currentFileName: file.name,
-        percentage: 0
+        percentage: 0,
+        bytesUploaded: 0,
+        totalBytes: file.size
       });
 
       // Check if name already exists
@@ -165,31 +167,23 @@ export function FileExplorer({
 
         let uploadedFile;
         
-        // Use chunked upload for large files (>32 MB)
-        if (shouldUseChunkedUpload(file.size)) {
-          uploadedFile = await uploadFileWithChunks(
-            file, 
-            currentFolderId, 
-            fileType,
-            (progress) => {
-              // Update progress with bytes uploaded
-              const fileProgress = progress.percentage;
-              const overallProgress = ((i + (fileProgress / 100)) / totalFiles) * 100;
-              
-              setUploadProgress({
-                current: i + 1,
-                total: totalFiles,
-                currentFileName: file.name,
-                percentage: Math.round(overallProgress),
-                bytesUploaded: progress.uploadedBytes,
-                totalBytes: progress.totalBytes
-              });
-            }
-          );
-        } else {
-          // Use original upload method for small files
-          uploadedFile = await api.files.upload(file, currentFolderId, fileType);
-        }
+        // Always use chunked upload for progress tracking
+        uploadedFile = await uploadFileWithChunks(
+          file, 
+          currentFolderId, 
+          fileType,
+          (progress) => {
+            // Update progress with bytes uploaded - this is the file-specific progress
+            setUploadProgress({
+              current: i + 1,
+              total: totalFiles,
+              currentFileName: file.name,
+              percentage: progress.percentage,
+              bytesUploaded: progress.uploadedBytes,
+              totalBytes: progress.totalBytes
+            });
+          }
+        );
         
         const newItem: FileItem = {
           id: uploadedFile.id,

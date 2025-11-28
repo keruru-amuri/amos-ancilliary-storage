@@ -98,21 +98,23 @@ export function UploadConfirmationModal({
             <div className="mb-4 p-4 bg-muted rounded-[var(--radius)] border border-border space-y-3">
               <div className="flex justify-between items-center text-sm">
                 <span className="font-medium">
-                  Uploading {uploadProgress.current} of {uploadProgress.total}
+                  Uploading file {uploadProgress.current} of {uploadProgress.total}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground font-medium">
                   {uploadProgress.percentage}%
                 </span>
               </div>
-              <Progress value={uploadProgress.percentage} className="h-2" />
-              <div className="text-sm text-muted-foreground truncate">
-                Current: {uploadProgress.currentFileName}
+              <Progress value={uploadProgress.percentage} className="h-3" />
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground truncate max-w-[60%]">
+                  {uploadProgress.currentFileName}
+                </span>
+                {uploadProgress.bytesUploaded !== undefined && uploadProgress.totalBytes !== undefined && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatFileSize(uploadProgress.bytesUploaded)} / {formatFileSize(uploadProgress.totalBytes)}
+                  </span>
+                )}
               </div>
-              {uploadProgress.bytesUploaded !== undefined && uploadProgress.totalBytes !== undefined && (
-                <div className="text-xs text-muted-foreground">
-                  {formatFileSize(uploadProgress.bytesUploaded)} / {formatFileSize(uploadProgress.totalBytes)}
-                </div>
-              )}
             </div>
           )}
 
@@ -123,9 +125,8 @@ export function UploadConfirmationModal({
               {files.map((file, index) => {
                 const isCurrentFile = isUploading && uploadProgress.current === index + 1;
                 const isCompleted = isUploading && uploadProgress.current > index + 1;
-                const filePercentage = isCurrentFile && uploadProgress.bytesUploaded && uploadProgress.totalBytes
-                  ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)
-                  : 0;
+                // Use the percentage directly from uploadProgress for current file
+                const filePercentage = isCurrentFile ? uploadProgress.percentage : 0;
                 
                 return (
                   <div

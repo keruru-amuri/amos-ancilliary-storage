@@ -36,6 +36,16 @@ export async function uploadFileWithChunks(
   onProgress?: (progress: UploadProgress) => void
 ): Promise<any> {
   try {
+    // Initial progress callback (0%)
+    if (onProgress) {
+      onProgress({
+        fileName: file.name,
+        uploadedBytes: 0,
+        totalBytes: file.size,
+        percentage: 0
+      });
+    }
+
     // Step 1: Get SAS token from backend
     const sasResponse = await fetch(`${API_BASE_URL}/files/upload-sas`, {
       method: 'POST',
@@ -55,25 +65,48 @@ export async function uploadFileWithChunks(
 
     const sasData: SASTokenResponse = await sasResponse.json();
 
+    // Progress at 5% after getting SAS token
+    if (onProgress) {
+      onProgress({
+        fileName: file.name,
+        uploadedBytes: 0,
+        totalBytes: file.size,
+        percentage: 5
+      });
+    }
+
     // Step 2: Upload file directly to blob storage using chunked upload
     const blockBlobClient = new BlockBlobClient(sasData.sasUrl);
 
     // Configure upload options
-    const blockSize = 4 * 1024 * 1024; // 4 MB blocks (optimal for most scenarios)
-    const maxConcurrency = 4; // Upload up to 4 blocks in parallel
+    // Use smaller block size for better progress granularity
+    const blockSize = file.size > 10 * 1024 * 1024 
+      ? 4 * 1024 * 1024   // 4 MB for files > 10 MB
+      : 1 * 1024 * 1024;  // 1 MB for smaller files
+    const maxConcurrency = 4;
+
+    let lastReportedProgress = 5;
 
     // Perform the upload with progress tracking
     await blockBlobClient.uploadData(file, {
       blockSize: blockSize,
       concurrency: maxConcurrency,
       onProgress: (progressEvent) => {
-        if (onProgress && progressEvent.loadedBytes) {
-          onProgress({
-            fileName: file.name,
-            uploadedBytes: progressEvent.loadedBytes,
-            totalBytes: file.size,
-            percentage: Math.round((progressEvent.loadedBytes / file.size) * 100)
-          });
+        if (onProgress) {
+          const loadedBytes = progressEvent.loadedBytes || 0;
+          // Scale progress from 5% to 95% (leaving room for metadata save)
+          const uploadPercentage = Math.round((loadedBytes / file.size) * 90) + 5;
+          
+          // Only update if progress changed meaningfully (at least 1%)
+          if (uploadPercentage > lastReportedProgress) {
+            lastReportedProgress = uploadPercentage;
+            onProgress({
+              fileName: file.name,
+              uploadedBytes: loadedBytes,
+              totalBytes: file.size,
+              percentage: Math.min(uploadPercentage, 95)
+            });
+          }
         }
       },
       // Set blob HTTP headers
@@ -81,6 +114,16 @@ export async function uploadFileWithChunks(
         blobContentType: file.type || 'application/octet-stream'
       }
     });
+
+    // Progress at 95% - upload complete, saving metadata
+    if (onProgress) {
+      onProgress({
+        fileName: file.name,
+        uploadedBytes: file.size,
+        totalBytes: file.size,
+        percentage: 95
+      });
+    }
 
     // Step 3: Commit metadata to backend (save to Azure Table Storage)
     const completeResponse = await fetch(`${API_BASE_URL}/files/upload-complete`, {
@@ -99,6 +142,16 @@ export async function uploadFileWithChunks(
     if (!completeResponse.ok) {
       const errorData = await completeResponse.json().catch(() => ({ error: 'Failed to save file metadata' }));
       throw new Error(errorData.error || 'Failed to save file metadata');
+    }
+
+    // Progress at 100% - fully complete
+    if (onProgress) {
+      onProgress({
+        fileName: file.name,
+        uploadedBytes: file.size,
+        totalBytes: file.size,
+        percentage: 100
+      });
     }
 
     return await completeResponse.json();
@@ -121,9 +174,10 @@ export async function uploadFileWithChunks(
 
 /**
  * Determines if chunked upload should be used based on file size
- * Files larger than 32 MB use chunked upload
+ * Now always returns true to ensure progress tracking works for all files
  */
 export function shouldUseChunkedUpload(fileSize: number): boolean {
-  const CHUNK_THRESHOLD = 32 * 1024 * 1024; // 32 MB
-  return fileSize > CHUNK_THRESHOLD;
+  // Always use chunked upload for progress tracking
+  // The Azure SDK handles small files efficiently anyway
+  return true;
 }
