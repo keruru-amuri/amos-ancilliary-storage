@@ -130,6 +130,11 @@ export default function App() {
     loadItems(currentFolderId);
   }, [currentFolderId]);
 
+  // Reset selected file when navigating to another folder
+  useEffect(() => {
+    setSelectedFile(null);
+  }, [currentFolderId]);
+
   const handleFileSelect = (file: FileItem) => {
     if (file.type === 'file') {
       setSelectedFile(file);
