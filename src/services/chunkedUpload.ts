@@ -75,41 +75,45 @@ export async function uploadFileWithChunks(
       });
     }
 
-    // Step 2: Upload file directly to blob storage using chunked upload
+    // Step 2: Upload file directly to blob storage using manual chunked upload
     const blockBlobClient = new BlockBlobClient(sasData.sasUrl);
-
-    // Configure upload options
-    // Use smaller block size for better progress granularity
-    const blockSize = file.size > 10 * 1024 * 1024 
+    const chunkSize = file.size > 10 * 1024 * 1024 
       ? 4 * 1024 * 1024   // 4 MB for files > 10 MB
       : 1 * 1024 * 1024;  // 1 MB for smaller files
-    const maxConcurrency = 4;
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    const blockIds: string[] = [];
 
+    let uploadedBytes = 0;
     let lastReportedProgress = 5;
 
-    // Perform the upload with progress tracking
-    await blockBlobClient.uploadData(file, {
-      blockSize: blockSize,
-      concurrency: maxConcurrency,
-      onProgress: (progressEvent) => {
-        if (onProgress) {
-          const loadedBytes = progressEvent.loadedBytes || 0;
-          // Scale progress from 5% to 95% (leaving room for metadata save)
-          const uploadPercentage = Math.round((loadedBytes / file.size) * 90) + 5;
-          
-          // Only update if progress changed meaningfully (at least 1%)
-          if (uploadPercentage > lastReportedProgress) {
-            lastReportedProgress = uploadPercentage;
-            onProgress({
-              fileName: file.name,
-              uploadedBytes: loadedBytes,
-              totalBytes: file.size,
-              percentage: Math.min(uploadPercentage, 95)
-            });
-          }
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const chunk = file.slice(start, end);
+
+      // Azure block IDs must be base64 strings - pad the index for ordering
+      const blockId = btoa(`block-${chunkIndex.toString().padStart(6, '0')}`);
+      blockIds.push(blockId);
+
+      await blockBlobClient.stageBlock(blockId, chunk, chunk.size);
+
+      uploadedBytes = end;
+
+      if (onProgress) {
+        const uploadPercentage = Math.round((uploadedBytes / file.size) * 90) + 5;
+        if (uploadPercentage > lastReportedProgress) {
+          lastReportedProgress = uploadPercentage;
+          onProgress({
+            fileName: file.name,
+            uploadedBytes,
+            totalBytes: file.size,
+            percentage: Math.min(uploadPercentage, 95)
+          });
         }
-      },
-      // Set blob HTTP headers
+      }
+    }
+
+    await blockBlobClient.commitBlockList(blockIds, {
       blobHTTPHeaders: {
         blobContentType: file.type || 'application/octet-stream'
       }
