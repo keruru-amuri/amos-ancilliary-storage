@@ -185,19 +185,17 @@ export default function App() {
       {/* Main Content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* File Explorer Sidebar */}
-        <div className={`${selectedFile ? 'w-80 lg:w-96' : 'w-full md:w-96'} border-r border-border flex-shrink-0 flex flex-col min-h-0`}>
-          <div className="flex-1 min-h-0">
-            <FileExplorer
-              items={items}
-              setItems={setItems}
-              currentFolderId={currentFolderId}
-              setCurrentFolderId={setCurrentFolderId}
-              onFileSelect={handleFileSelect}
-              selectedFileId={selectedFile?.id}
-              onItemsChange={loadItems}
-              breadcrumbPath={breadcrumbPath}
-            />
-          </div>
+        <div className={`${selectedFile ? 'w-80 lg:w-96' : 'w-full md:w-96'} border-r border-border flex-shrink-0`}>
+          <FileExplorer
+            items={items}
+            setItems={setItems}
+            currentFolderId={currentFolderId}
+            setCurrentFolderId={setCurrentFolderId}
+            onFileSelect={handleFileSelect}
+            selectedFileId={selectedFile?.id}
+            onItemsChange={loadItems}
+            breadcrumbPath={breadcrumbPath}
+          />
         </div>
 
         {/* File Viewer or Empty State */}
