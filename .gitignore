@@ -55,3 +55,9 @@ Thumbs.db
 
 # Documentation (excluded from GitHub)
 docs/
+
+# Playwright
+.playwright-mcp/
+
+# scratch files
+scratchpad.md

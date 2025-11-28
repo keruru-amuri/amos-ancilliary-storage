@@ -4,6 +4,7 @@ import api from '../services/api';
 import { Breadcrumb } from './Breadcrumb';
 import { FileItemComponent } from './FileItemComponent';
 import { CreateItemModal } from './CreateItemModal';
+import { UploadConfirmationModal } from './UploadConfirmationModal';
 import { StorageStats } from './StorageStats';
 import { FolderPlus, Upload, ArrowUp } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
@@ -32,6 +33,14 @@ export function FileExplorer({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createType, setCreateType] = useState<'file' | 'folder'>('folder');
   const [uploading, setUploading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState({ 
+    current: 0, 
+    total: 0, 
+    currentFileName: '', 
+    percentage: 0 
+  });
 
   // Get current folder's items
   const currentItems = items.filter(item => item.parentId === currentFolderId);
@@ -80,9 +89,31 @@ export function FileExplorer({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    setUploading(true);
+    // Store selected files and show confirmation modal
+    setSelectedFiles(Array.from(files));
+    setShowUploadModal(true);
     
-    for (const file of Array.from(files)) {
+    // Reset input
+    event.target.value = '';
+  };
+
+  const handleConfirmUpload = async () => {
+    if (selectedFiles.length === 0) return;
+
+    setUploading(true);
+    const totalFiles = selectedFiles.length;
+    
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      
+      // Update progress
+      setUploadProgress({
+        current: i + 1,
+        total: totalFiles,
+        currentFileName: file.name,
+        percentage: Math.round(((i) / totalFiles) * 100)
+      });
+
       // Check if name already exists
       const nameExists = currentItems.some(
         item => item.name.toLowerCase() === file.name.toLowerCase()
@@ -133,12 +164,29 @@ export function FileExplorer({
       }
     }
 
+    // Update final progress
+    setUploadProgress({
+      current: totalFiles,
+      total: totalFiles,
+      currentFileName: '',
+      percentage: 100
+    });
+
     setUploading(false);
-    // Reset input
-    event.target.value = '';
+    setShowUploadModal(false);
+    setSelectedFiles([]);
+    setUploadProgress({ current: 0, total: 0, currentFileName: '', percentage: 0 });
     
     if (onItemsChange) {
       onItemsChange(currentFolderId);
+    }
+  };
+
+  const handleCancelUpload = () => {
+    if (!uploading) {
+      setShowUploadModal(false);
+      setSelectedFiles([]);
+      setUploadProgress({ current: 0, total: 0, currentFileName: '', percentage: 0 });
     }
   };
 
@@ -322,6 +370,17 @@ export function FileExplorer({
           type={createType}
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateItem}
+        />
+      )}
+
+      {/* Upload Confirmation Modal */}
+      {showUploadModal && (
+        <UploadConfirmationModal
+          files={selectedFiles}
+          onConfirm={handleConfirmUpload}
+          onCancel={handleCancelUpload}
+          isUploading={uploading}
+          uploadProgress={uploadProgress}
         />
       )}
     </div>
