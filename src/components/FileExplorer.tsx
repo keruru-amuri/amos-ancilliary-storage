@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileItem } from '../App';
 import api from '../services/api';
+import { uploadFileWithChunks, shouldUseChunkedUpload } from '../services/chunkedUpload';
 import { Breadcrumb } from './Breadcrumb';
 import { FileItemComponent } from './FileItemComponent';
 import { CreateItemModal } from './CreateItemModal';
@@ -89,15 +90,23 @@ export function FileExplorer({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // Check file sizes before proceeding
-    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB in bytes
-    const oversizedFiles = Array.from(files).filter(file => file.size > MAX_FILE_SIZE);
+    // Check file sizes - warn but don't block for very large files
+    const WARN_SIZE = 100 * 1024 * 1024; // 100 MB
+    const MAX_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB (Azure Blob limit for single block blob)
+    
+    const oversizedFiles = Array.from(files).filter(file => file.size > MAX_SIZE);
+    const largeFiles = Array.from(files).filter(file => file.size > WARN_SIZE && file.size <= MAX_SIZE);
     
     if (oversizedFiles.length > 0) {
       const fileNames = oversizedFiles.map(f => f.name).join(', ');
-      toast.error(`The following files exceed the 100 MB limit: ${fileNames}`);
+      toast.error(`The following files exceed the 5 GB limit: ${fileNames}`);
       event.target.value = '';
       return;
+    }
+
+    if (largeFiles.length > 0) {
+      const fileNames = largeFiles.map(f => f.name).join(', ');
+      toast.info(`Large files detected: ${fileNames}. Upload may take several minutes.`);
     }
 
     // Store selected files and show confirmation modal
@@ -117,12 +126,12 @@ export function FileExplorer({
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       
-      // Update progress
+      // Initial progress for this file
       setUploadProgress({
         current: i + 1,
         total: totalFiles,
         currentFileName: file.name,
-        percentage: Math.round(((i) / totalFiles) * 100)
+        percentage: 0
       });
 
       // Check if name already exists
@@ -154,8 +163,33 @@ export function FileExplorer({
           fileType = 'video';
         }
 
-        // Upload via API
-        const uploadedFile = await api.files.upload(file, currentFolderId, fileType);
+        let uploadedFile;
+        
+        // Use chunked upload for large files (>32 MB)
+        if (shouldUseChunkedUpload(file.size)) {
+          uploadedFile = await uploadFileWithChunks(
+            file, 
+            currentFolderId, 
+            fileType,
+            (progress) => {
+              // Update progress with bytes uploaded
+              const fileProgress = progress.percentage;
+              const overallProgress = ((i + (fileProgress / 100)) / totalFiles) * 100;
+              
+              setUploadProgress({
+                current: i + 1,
+                total: totalFiles,
+                currentFileName: file.name,
+                percentage: Math.round(overallProgress),
+                bytesUploaded: progress.uploadedBytes,
+                totalBytes: progress.totalBytes
+              });
+            }
+          );
+        } else {
+          // Use original upload method for small files
+          uploadedFile = await api.files.upload(file, currentFolderId, fileType);
+        }
         
         const newItem: FileItem = {
           id: uploadedFile.id,

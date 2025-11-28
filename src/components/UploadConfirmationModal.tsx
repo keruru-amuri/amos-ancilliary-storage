@@ -11,7 +11,9 @@ interface UploadConfirmationModalProps {
     current: number; 
     total: number; 
     currentFileName: string; 
-    percentage: number 
+    percentage: number;
+    bytesUploaded?: number;
+    totalBytes?: number;
   };
 }
 
@@ -84,7 +86,7 @@ export function UploadConfirmationModal({
                 <div>
                   <div className="font-medium text-yellow-700 dark:text-yellow-300">Large file detected</div>
                   <div className="text-yellow-600/90 dark:text-yellow-400/90 mt-1">
-                    Files larger than 50 MB may take longer to upload. Maximum file size is 100 MB.
+                    Files larger than 100 MB will use chunked upload. Upload time depends on file size and connection speed.
                   </div>
                 </div>
               </div>
@@ -106,6 +108,11 @@ export function UploadConfirmationModal({
               <div className="text-sm text-muted-foreground truncate">
                 Current: {uploadProgress.currentFileName}
               </div>
+              {uploadProgress.bytesUploaded !== undefined && uploadProgress.totalBytes !== undefined && (
+                <div className="text-xs text-muted-foreground">
+                  {formatFileSize(uploadProgress.bytesUploaded)} / {formatFileSize(uploadProgress.totalBytes)}
+                </div>
+              )}
             </div>
           )}
 
