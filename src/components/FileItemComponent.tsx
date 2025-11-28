@@ -201,20 +201,20 @@ export function FileItemComponent({
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{item.name}"?
-              {item.type === 'folder' && (
-                <span className="block mt-2 text-destructive font-medium">
-                  This will also delete all files and folders inside it. This action cannot be undone.
-                </span>
-              )}
-              {item.type === 'file' && (
-                <span className="block mt-2">
-                  This action cannot be undone.
-                </span>
-              )}
-            </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{item.name}"?
+            {item.type === 'folder' && (
+              <span className="block mt-2 text-destructive font-medium">
+                This will also delete all files and folders inside it. This action cannot be undone.
+              </span>
+            )}
+            {item.type === 'file' && (
+              <span className="block mt-2">
+                This action cannot be undone.
+              </span>
+            )}
+          </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
