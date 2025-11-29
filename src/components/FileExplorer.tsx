@@ -375,9 +375,7 @@ export function FileExplorer({
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           )}
-          {isSearching && (
-            <div className="absolute right-10 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Searching…</div>
-          )}
+          {/* moved searching indicator into the file list area so it doesn't overlap the input */}
         </div>
       </div>
 
@@ -431,6 +429,13 @@ export function FileExplorer({
 
       {/* File/Folder List (or search results) */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
+        {/* Global searching indicator — visible in the explorer area instead of inside the input */}
+        {isSearching && (
+          <div className="mb-4 px-2 py-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-block w-4 h-4 rounded-full border-2 border-t-primary border-muted/30 animate-spin" />
+            <span>Searching…</span>
+          </div>
+        )}
         {/* Determine items to show: searchResults when present, otherwise current folder items */}
         {((searchResults !== null) ? (searchResults.length === 0) : currentItems.length === 0) ? (
           <div className="text-center py-12">
