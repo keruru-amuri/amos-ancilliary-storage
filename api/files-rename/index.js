@@ -1,8 +1,15 @@
-const { getEntity, getEntityByRowKey, queryEntities, updateEntity } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { getEntity, getEntityByRowKey, queryEntities, updateEntity } = storageService;
 const { createSuccessResponse, createErrorResponse, validateRequired, mapEntityToItem, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     const { id } = req.params;
     const { name } = req.body || {};
     
@@ -23,6 +30,14 @@ module.exports = async function (context, req) {
     
     if (!indexFile) {
       context.res = createErrorResponse('File not found', 404);
+      return;
+    }
+    
+    // Check permission to rename (need WRITE on parent folder)
+    const parentId = indexFile.parentId || null;
+    const access = await checkFolderAccess(user, parentId, PERMISSION.WRITE, storageService);
+    if (!access.allowed) {
+      context.res = createErrorResponse('You do not have permission to rename this file', 403);
       return;
     }
     

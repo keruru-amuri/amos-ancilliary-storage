@@ -10,6 +10,7 @@ const useConnectionString = process.env.USE_CONNECTION_STRING === 'true';
 
 // Constants
 const TABLE_NAME = "filesMetadata";
+const PERMISSIONS_TABLE_NAME = "folderPermissions";
 const CONTAINER_NAME = "cloudstore-files";
 
 // Helper function to get container name
@@ -33,6 +34,7 @@ function getCredential() {
 
 // Table Storage Client
 let tableClient = null;
+let permissionsTableClient = null;
 
 function getTableClient() {
   if (!tableClient) {
@@ -58,6 +60,29 @@ function getTableClient() {
     }
   }
   return tableClient;
+}
+
+function getPermissionsTableClient() {
+  if (!permissionsTableClient) {
+    if (useConnectionString) {
+      permissionsTableClient = TableClient.fromConnectionString(connectionString, PERMISSIONS_TABLE_NAME);
+    } else if (accountKey) {
+      const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+      permissionsTableClient = new TableClient(
+        `https://${accountName}.table.core.windows.net`,
+        PERMISSIONS_TABLE_NAME,
+        sharedKeyCredential
+      );
+    } else {
+      const cred = getCredential();
+      permissionsTableClient = new TableClient(
+        `https://${accountName}.table.core.windows.net`,
+        PERMISSIONS_TABLE_NAME,
+        cred
+      );
+    }
+  }
+  return permissionsTableClient;
 }
 
 // Blob Storage Client
@@ -148,6 +173,51 @@ async function getEntityByRowKey(rowKey, type = null) {
     if (type && entity.type !== type) {
       return null;
     }
+    
+    return entity;
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Permission Table Operations
+async function getPermissionEntity(partitionKey, rowKey) {
+  const client = getPermissionsTableClient();
+  try {
+    return await client.getEntity(partitionKey, rowKey);
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function upsertPermissionEntity(entity) {
+  const client = getPermissionsTableClient();
+  await client.upsertEntity(entity, "Replace");
+  return entity;
+}
+
+async function deletePermissionEntity(partitionKey, rowKey) {
+  const client = getPermissionsTableClient();
+  await client.deleteEntity(partitionKey, rowKey);
+}
+
+async function queryPermissionEntities(filter) {
+  const client = getPermissionsTableClient();
+  const entities = [];
+  const iterator = client.listEntities({ queryOptions: { filter } });
+  
+  for await (const entity of iterator) {
+    entities.push(entity);
+  }
+  
+  return entities;
+}
     
     return entity;
   } catch (error) {
@@ -303,9 +373,15 @@ async function initializeStorage() {
       access: 'none' // Private container
     });
     
-    // Create table if it doesn't exist
+    // Create files metadata table if it doesn't exist
     const client = getTableClient();
     await client.createTable().catch(() => {
+      // Table might already exist, ignore error
+    });
+    
+    // Create permissions table if it doesn't exist
+    const permClient = getPermissionsTableClient();
+    await permClient.createTable().catch(() => {
       // Table might already exist, ignore error
     });
     
@@ -325,6 +401,12 @@ module.exports = {
   queryEntities,
   getEntityByRowKey,
   
+  // Permission Table Storage
+  getPermissionEntity,
+  upsertPermissionEntity,
+  deletePermissionEntity,
+  queryPermissionEntities,
+  
   // Blob Storage
   uploadBlob,
   deleteBlob,
@@ -341,5 +423,6 @@ module.exports = {
   
   // Constants
   TABLE_NAME,
+  PERMISSIONS_TABLE_NAME,
   CONTAINER_NAME
 };

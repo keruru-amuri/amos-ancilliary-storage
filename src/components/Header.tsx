@@ -1,8 +1,11 @@
 import React from 'react';
-import { User } from 'lucide-react';
+import { User, LogIn, LogOut, Shield } from 'lucide-react';
 import logoSvg from '../assets/logo.svg';
+import { useAuth } from '../contexts/AuthContext';
 
 export function Header() {
+  const { user, isAuthenticated, isAdmin, loading, login, logout } = useAuth();
+
   return (
     <header className="bg-card border-b border-border">
       <div className="flex items-center justify-between px-6 py-4">
@@ -21,13 +24,53 @@ export function Header() {
 
         {/* User Section */}
         <div className="flex items-center gap-4">
-          <div className="hidden lg:block text-right">
-            <p className="text-foreground">Sarah Mitchell</p>
-            <p className="text-muted-foreground">sarah@company.com</p>
-          </div>
-          <button className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:opacity-90 transition-opacity">
-            <User className="w-5 h-5 text-primary-foreground" />
-          </button>
+          {loading ? (
+            <div className="animate-pulse flex items-center gap-4">
+              <div className="hidden lg:block text-right">
+                <div className="h-4 w-24 bg-muted rounded mb-1"></div>
+                <div className="h-3 w-32 bg-muted rounded"></div>
+              </div>
+              <div className="w-10 h-10 bg-muted rounded-full"></div>
+            </div>
+          ) : isAuthenticated && user ? (
+            <>
+              <div className="hidden lg:block text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <p className="text-foreground">{user.displayName || user.email}</p>
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                      <Shield className="w-3 h-3" />
+                      Admin
+                    </span>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-sm">{user.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:opacity-90 transition-opacity"
+                  title={user.email}
+                >
+                  <User className="w-5 h-5 text-primary-foreground" />
+                </button>
+                <button
+                  onClick={logout}
+                  className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={login}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
 

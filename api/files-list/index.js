@@ -1,9 +1,28 @@
-const { queryEntities } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { queryEntities } = storageService;
 const { createSuccessResponse, mapEntityToItem, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     const { parentId } = req.query;
+    
+    // Check permission to view this folder
+    const access = await checkFolderAccess(user, parentId || null, PERMISSION.READ, storageService);
+    if (!access.allowed) {
+      context.res = {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'You do not have permission to view this folder', statusCode: 403 })
+      };
+      return;
+    }
+    
     const partition = parentId || 'root';
     
     // Query files in the specified partition

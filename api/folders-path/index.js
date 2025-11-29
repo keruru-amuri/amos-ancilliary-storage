@@ -1,5 +1,7 @@
-const { getEntityByRowKey } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { getEntityByRowKey } = storageService;
 const { createSuccessResponse, createErrorResponse, mapEntityToItem, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
 
 async function buildPath(folderId) {
   const path = [];
@@ -22,6 +24,9 @@ async function buildPath(folderId) {
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
     const { id } = req.params;
     
     if (!id) {

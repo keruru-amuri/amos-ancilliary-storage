@@ -1,5 +1,7 @@
-const { queryEntities, getContainerClient } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { queryEntities } = storageService;
 const { createSuccessResponse, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
 
 async function calculateStorageStats() {
   // Get all file entities
@@ -33,6 +35,9 @@ async function calculateStorageStats() {
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
     const stats = await calculateStorageStats();
     context.res = createSuccessResponse(stats);
     

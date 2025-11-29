@@ -1,12 +1,26 @@
 const { v4: uuidv4 } = require('uuid');
-const { createEntity, queryEntities } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { createEntity, queryEntities } = storageService;
 const { createSuccessResponse, createErrorResponse, validateRequired, mapEntityToItem, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     context.log('Starting folder creation...');
     const { name, parentId } = req.body || {};
     context.log(`Creating folder: ${name}, parentId: ${parentId}`);
+    
+    // Check permission to create in parent folder
+    const access = await checkFolderAccess(user, parentId, PERMISSION.WRITE, storageService);
+    if (!access.allowed) {
+      context.res = createErrorResponse('You do not have permission to create folders here', 403);
+      return;
+    }
     
     // Validate required fields
     const validation = validateRequired(['name'], { name });

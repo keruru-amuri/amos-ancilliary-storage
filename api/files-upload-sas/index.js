@@ -1,16 +1,30 @@
 const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 const { v4: uuidv4 } = require('uuid');
-const { createEntity, getBlobNameForFile, getContainerName } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { createEntity, getBlobNameForFile, getContainerName } = storageService;
 const { createSuccessResponse, createErrorResponse, mapEntityToItem } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     context.log('Generating SAS token for direct upload');
 
     const { fileName, parentId, fileType, fileSize } = req.body;
 
     if (!fileName) {
       context.res = createErrorResponse('fileName is required', 400);
+      return;
+    }
+    
+    // Check permission to upload to this folder
+    const access = await checkFolderAccess(user, parentId || null, PERMISSION.WRITE, storageService);
+    if (!access.allowed) {
+      context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
       return;
     }
 
