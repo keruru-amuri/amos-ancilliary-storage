@@ -11,14 +11,27 @@ export function Header() {
   return (
     <header className="bg-card border-b border-border">
       <div className="flex items-center justify-between px-6 py-4">
-        {/* Logo and Title */}
+        {/* Logo, Title and Admin badge (aligned on a single row) */}
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center">
             <img src={logoSvg} alt="AMOS Logo" className="h-8" />
           </div>
-          <div>
-            <h1 className="text-foreground">CloudStore</h1>
-            <p className="text-muted-foreground">File Management System</p>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <h1 className="text-foreground">CloudStore</h1>
+              {isAdmin && (
+                <span
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-tr from-primary/10 via-primary/8 to-transparent text-primary border border-primary/20 shadow-sm"
+                  title="Administrator"
+                  role="status"
+                  aria-label="Administrator"
+                >
+                  <Shield className="w-4 h-4 stroke-[1.6]" />
+                  Admin
+                </span>
+              )}
+            </div>
+            <p className="text-muted-foreground text-sm">File Management System</p>
           </div>
         </div>
 
@@ -39,17 +52,7 @@ export function Header() {
               <div className="hidden lg:block text-right">
                 <div className="flex items-center justify-end gap-2">
                   <p className="text-foreground">{user.displayName || user.email}</p>
-                  {isAdmin && (
-                    <span
-                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-tr from-primary/10 via-primary/8 to-transparent text-primary border border-primary/20 shadow-sm"
-                      title="Administrator"
-                      role="status"
-                      aria-label="Administrator"
-                    >
-                      <Shield className="w-4 h-4 stroke-[1.6]" />
-                      Admin
-                    </span>
-                  )}
+                  {/* Admin badge moved to the brand area — kept out of the right user block to avoid duplication */}
                 </div>
                 <p className="text-muted-foreground text-sm">{user.email}</p>
               </div>
