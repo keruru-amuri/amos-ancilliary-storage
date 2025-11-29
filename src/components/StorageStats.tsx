@@ -46,8 +46,6 @@ export function StorageStats({ totalItems }: StorageStatsProps) {
   }, [totalItems]);
 
   const usedGB = stats?.usedGB || 0;
-  const totalGB = stats?.totalGB || 50;
-  const percentage = totalGB > 0 ? (usedGB / totalGB) * 100 : 0;
 
   return (
     <div className="p-6 border-t border-sidebar-border bg-card/50">
@@ -62,16 +60,12 @@ export function StorageStats({ totalItems }: StorageStatsProps) {
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-primary h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(percentage, 100)}%` }}
-            />
-          </div>
-          
-          <div className="flex justify-between">
-            <span className="text-foreground">{usedGB.toFixed(1)} GB used</span>
-            <span className="text-muted-foreground">{totalGB.toFixed(0)} GB total</span>
+          <div className="flex items-baseline justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-foreground font-semibold text-lg">{usedGB.toFixed(1)} GB</span>
+              <span className="text-muted-foreground text-sm">used</span>
+            </div>
+            <span className="text-muted-foreground text-xs italic">No quota — Azure Blob Storage</span>
           </div>
           
           <div className="pt-2 border-t border-border space-y-1">
