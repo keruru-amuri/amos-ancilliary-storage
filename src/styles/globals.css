@@ -211,3 +211,9 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Comfortable horizontal padding for compact labels like "1 file selected" */
+.text-sm.font-medium {
+  padding-left: calc(var(--spacing) * 3);
+  padding-right: calc(var(--spacing) * 3);
+}
