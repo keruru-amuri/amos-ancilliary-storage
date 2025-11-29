@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, LogIn, LogOut, Shield } from 'lucide-react';
+import { User, LogIn, LogOut } from 'lucide-react';
 import logoSvg from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginModal } from './LoginModal';
@@ -18,18 +18,7 @@ export function Header() {
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
-              <h1 className="text-foreground">CloudStore</h1>
-              {isAdmin && (
-                <span
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-tr from-primary/10 via-primary/8 to-transparent text-primary border border-primary/20 shadow-sm"
-                  title="Administrator"
-                  role="status"
-                  aria-label="Administrator"
-                >
-                  <Shield className="w-4 h-4 stroke-[1.6]" />
-                  Admin
-                </span>
-              )}
+              <h1 className="text-foreground text-2xl font-bold leading-none">CloudStore</h1>
             </div>
             <p className="text-muted-foreground text-sm">File Management System</p>
           </div>
