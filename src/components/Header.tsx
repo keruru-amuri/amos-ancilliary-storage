@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, LogIn, LogOut, Shield } from 'lucide-react';
 import logoSvg from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
+import { LoginModal } from './LoginModal';
 
 export function Header() {
-  const { user, isAuthenticated, isAdmin, loading, login, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, loading, logout } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
     <header className="bg-card border-b border-border">
@@ -64,7 +66,7 @@ export function Header() {
             </>
           ) : (
             <button
-              onClick={login}
+              onClick={() => setShowLoginModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
             >
               <LogIn className="w-4 h-4" />
@@ -74,7 +76,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile search removed — search lives in the sidebar */}
+      {/* Login Modal */}
+      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
     </header>
   );
 }

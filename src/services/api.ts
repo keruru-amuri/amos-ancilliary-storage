@@ -1,5 +1,36 @@
 // API Configuration
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+const MOCK_AUTH_KEY = 'cloudstore_mock_auth';
+
+// Helper to get mock token from localStorage
+function getMockToken(): string | null {
+  try {
+    const stored = localStorage.getItem(MOCK_AUTH_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.mockToken || null;
+    }
+  } catch (e) {
+    console.error('Failed to get mock token:', e);
+  }
+  return null;
+}
+
+// Helper to get headers with auth
+function getAuthHeaders(contentType?: string): HeadersInit {
+  const headers: HeadersInit = {};
+  
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+  
+  const mockToken = getMockToken();
+  if (mockToken) {
+    headers['X-Mock-User'] = mockToken;
+  }
+  
+  return headers;
+}
 
 // Types
 export interface FileItem {
@@ -43,6 +74,22 @@ async function handleResponse<T>(response: Response): Promise<T> {
       );
     }
     
+    if (response.status === 401) {
+      throw new ApiError(
+        401,
+        'Please sign in to continue.',
+        { requiresAuth: true }
+      );
+    }
+    
+    if (response.status === 403) {
+      throw new ApiError(
+        403,
+        'You do not have permission to perform this action.',
+        { forbidden: true }
+      );
+    }
+    
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new ApiError(
       response.status,
@@ -58,7 +105,7 @@ export const foldersApi = {
   async create(name: string, parentId: string | null = null): Promise<FileItem> {
     const response = await fetch(`${API_BASE_URL}/folders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders('application/json'),
       body: JSON.stringify({ name, parentId })
     });
     return handleResponse<FileItem>(response);
@@ -68,13 +115,16 @@ export const foldersApi = {
     const url = parentId 
       ? `${API_BASE_URL}/folders?parentId=${encodeURIComponent(parentId)}`
       : `${API_BASE_URL}/folders`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     return handleResponse<FileItem[]>(response);
   },
 
   async delete(id: string): Promise<{ success: boolean; deletedCount: number }> {
     const response = await fetch(`${API_BASE_URL}/folders/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAuthHeaders()
     });
     return handleResponse(response);
   },
@@ -82,14 +132,16 @@ export const foldersApi = {
   async rename(id: string, name: string): Promise<FileItem> {
     const response = await fetch(`${API_BASE_URL}/folders/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders('application/json'),
       body: JSON.stringify({ name })
     });
     return handleResponse<FileItem>(response);
   },
 
   async getPath(id: string): Promise<FileItem[]> {
-    const response = await fetch(`${API_BASE_URL}/folders/${id}/path`);
+    const response = await fetch(`${API_BASE_URL}/folders/${id}/path`, {
+      headers: getAuthHeaders()
+    });
     return handleResponse<FileItem[]>(response);
   }
 };
@@ -102,21 +154,32 @@ export const filesApi = {
     if (parentId) formData.append('parentId', parentId);
     if (fileType) formData.append('fileType', fileType);
 
+    // For FormData, don't set Content-Type (browser sets it with boundary)
+    const headers: HeadersInit = {};
+    const mockToken = getMockToken();
+    if (mockToken) {
+      headers['X-Mock-User'] = mockToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/files/upload`, {
       method: 'POST',
+      headers,
       body: formData
     });
     return handleResponse<FileItem>(response);
   },
 
   async getDownloadUrl(id: string): Promise<{ downloadUrl: string; fileName: string; fileType: string; size: number }> {
-    const response = await fetch(`${API_BASE_URL}/files/${id}/download`);
+    const response = await fetch(`${API_BASE_URL}/files/${id}/download`, {
+      headers: getAuthHeaders()
+    });
     return handleResponse(response);
   },
 
   async delete(id: string): Promise<{ success: boolean }> {
     const response = await fetch(`${API_BASE_URL}/files/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAuthHeaders()
     });
     return handleResponse(response);
   },
@@ -124,7 +187,7 @@ export const filesApi = {
   async rename(id: string, name: string): Promise<FileItem> {
     const response = await fetch(`${API_BASE_URL}/files/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders('application/json'),
       body: JSON.stringify({ name })
     });
     return handleResponse<FileItem>(response);
@@ -134,7 +197,9 @@ export const filesApi = {
     const url = parentId 
       ? `${API_BASE_URL}/files?parentId=${encodeURIComponent(parentId)}`
       : `${API_BASE_URL}/files`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     return handleResponse<FileItem[]>(response);
   }
 };
@@ -145,7 +210,9 @@ export const itemsApi = {
     const url = parentId 
       ? `${API_BASE_URL}/items?parentId=${encodeURIComponent(parentId)}`
       : `${API_BASE_URL}/items`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     return handleResponse<FileItem[]>(response);
   }
 };
@@ -156,7 +223,9 @@ export const searchApi = {
     const params = new URLSearchParams({ q: query });
     if (parentId) params.append('parentId', parentId);
     
-    const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
     return handleResponse<FileItem[]>(response);
   }
 };
@@ -164,7 +233,9 @@ export const searchApi = {
 // Storage Stats API
 export const storageApi = {
   async getStats(): Promise<StorageStats> {
-    const response = await fetch(`${API_BASE_URL}/storage/stats`);
+    const response = await fetch(`${API_BASE_URL}/storage/stats`, {
+      headers: getAuthHeaders()
+    });
     return handleResponse<StorageStats>(response);
   }
 };
