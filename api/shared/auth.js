@@ -15,25 +15,42 @@ const ADMIN_USERS = [
 const ALLOWED_DOMAINS = [];
 
 /**
- * Parse the x-ms-client-principal header from SWA
+ * Parse the x-ms-client-principal header from SWA or X-Mock-User header for mock auth
  * @param {object} req - The HTTP request object
  * @returns {object|null} - The client principal or null if not authenticated
  */
 function getClientPrincipal(req) {
-  const header = req.headers['x-ms-client-principal'];
+  // First, try the SWA built-in auth header
+  const swaHeader = req.headers['x-ms-client-principal'];
   
-  if (!header) {
-    return null;
+  if (swaHeader) {
+    try {
+      const encoded = Buffer.from(swaHeader, 'base64');
+      const decoded = encoded.toString('utf8');
+      return JSON.parse(decoded);
+    } catch (error) {
+      console.error('Failed to parse SWA client principal:', error);
+    }
   }
   
-  try {
-    const encoded = Buffer.from(header, 'base64');
-    const decoded = encoded.toString('utf8');
-    return JSON.parse(decoded);
-  } catch (error) {
-    console.error('Failed to parse client principal:', error);
-    return null;
+  // Fallback: check for mock auth header (temporary workaround until Azure AD admin consent)
+  const mockHeader = req.headers['x-mock-user'];
+  
+  if (mockHeader) {
+    try {
+      const encoded = Buffer.from(mockHeader, 'base64');
+      const decoded = encoded.toString('utf8');
+      const mockPrincipal = JSON.parse(decoded);
+      // Validate it looks like a valid principal
+      if (mockPrincipal.identityProvider === 'mock' && mockPrincipal.userDetails) {
+        return mockPrincipal;
+      }
+    } catch (error) {
+      console.error('Failed to parse mock user header:', error);
+    }
   }
+  
+  return null;
 }
 
 /**
