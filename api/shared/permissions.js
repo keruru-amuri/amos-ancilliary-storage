@@ -33,8 +33,9 @@ const PERMISSION_NAMES = {
  * Check if user has at least the required permission level for a folder
  * System admins bypass all permission checks
  * Public folders (isPublic: true) grant READ to all authenticated users
+ * Anonymous users (null) get READ access to existing public data
  * 
- * @param {object} user - User object from getCurrentUser()
+ * @param {object|null} user - User object from getCurrentUser() or null for anonymous
  * @param {string} folderId - The folder ID to check (null for root)
  * @param {number} requiredLevel - Required permission level
  * @param {object} storageService - Storage service module
@@ -42,13 +43,35 @@ const PERMISSION_NAMES = {
  */
 async function checkFolderAccess(user, folderId, requiredLevel, storageService) {
   // System admins have full access everywhere
-  if (isSystemAdmin(user)) {
+  if (user && isSystemAdmin(user)) {
     return {
       allowed: true,
       level: PERMISSION.ADMIN,
       inherited: false,
       fromFolderId: null,
       reason: 'system_admin'
+    };
+  }
+  
+  // Anonymous users only get READ access to existing public data
+  // WRITE and ADMIN operations always require authentication
+  if (!user) {
+    if (requiredLevel > PERMISSION.READ) {
+      return {
+        allowed: false,
+        level: PERMISSION.NONE,
+        inherited: false,
+        fromFolderId: null,
+        reason: 'auth_required'
+      };
+    }
+    // For READ, treat as public access to existing data
+    return {
+      allowed: true,
+      level: PERMISSION.READ,
+      inherited: true,
+      fromFolderId: null,
+      reason: 'public_access'
     };
   }
   
