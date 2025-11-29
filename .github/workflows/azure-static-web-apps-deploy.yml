@@ -4,8 +4,11 @@ on:
   push:
     branches:
       - main
+  # We only need pull_request events for the 'closed' action (used to tear down
+  # preview environments). Uploading preview environments on PR open/synchronize
+  # often hits the Azure SWA staging limit and isn't required for every PR.
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [closed]
     branches:
       - main
 
