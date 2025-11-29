@@ -18,7 +18,7 @@ export function Header() {
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
-              <h1 className="text-foreground text-2xl font-bold leading-none">CloudStore</h1>
+              <h1 className="text-foreground text-2xl font-bold leading-none">AMOS CloudStore</h1>
             </div>
             <p className="text-muted-foreground text-sm">File Management System</p>
           </div>

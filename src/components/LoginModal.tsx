@@ -42,7 +42,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LogIn className="h-5 w-5" />
-            Sign In to CloudStore
+            Sign In to AMOS CloudStore
           </DialogTitle>
           <DialogDescription>
             Enter your email address to sign in. Use your Malaysia Airlines email for admin access.
