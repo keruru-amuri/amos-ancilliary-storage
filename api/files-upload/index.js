@@ -1,8 +1,11 @@
 const multiparty = require('multiparty');
 const { Readable } = require('stream');
 const { v4: uuidv4 } = require('uuid');
-const { createEntity, uploadBlob, getBlobNameForFile, getContentTypeFromFileName, determineFileType } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { createEntity, uploadBlob, getBlobNameForFile, getContentTypeFromFileName, determineFileType } = storageService;
 const { createSuccessResponse, createErrorResponse, mapEntityToItem, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 function parseMultipartForm(req) {
   return new Promise((resolve, reject) => {
@@ -51,6 +54,10 @@ function parseMultipartForm(req) {
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     context.log('Upload started');
     context.log('Content-Type:', req.headers['content-type']);
     context.log('Body type:', typeof req.body);
@@ -71,6 +78,14 @@ module.exports = async function (context, req) {
     
     const uploadedFile = files.file[0];
     const parentId = fields.parentId && fields.parentId[0] ? fields.parentId[0] : null;
+    
+    // Check permission to upload to this folder
+    const access = await checkFolderAccess(user, parentId, PERMISSION.WRITE, storageService);
+    if (!access.allowed) {
+      context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
+      return;
+    }
+    
     const fileType = fields.fileType && fields.fileType[0] ? fields.fileType[0] : determineFileType(uploadedFile.originalFilename);
     
     context.log('File info:', {

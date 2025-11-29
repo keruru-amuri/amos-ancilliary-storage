@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FileExplorer } from './components/FileExplorer';
 import { FileViewer } from './components/FileViewer';
 import { Header } from './components/Header';
 import { Toaster, toast } from 'sonner@2.0.3';
 import api, { type FileItem as ApiFileItem } from './services/api';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 export interface FileItem {
   id: string;
@@ -63,7 +65,7 @@ const getSampleData = (): FileItem[] => {
   ];
 };
 
-export default function App() {
+function MainApp() {
   const [items, setItems] = useState<FileItem[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -225,5 +227,18 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main App component with AuthProvider wrapper
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter basename="/amos-cloudstore">
+        <Routes>
+          <Route path="/*" element={<MainApp />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

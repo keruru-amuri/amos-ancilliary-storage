@@ -1,14 +1,28 @@
-const { createEntity } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { createEntity } = storageService;
 const { createSuccessResponse, createErrorResponse, mapEntityToItem } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     context.log('Committing upload metadata');
 
     const { fileId, fileName, parentId, fileType, blobName, fileSize } = req.body;
 
     if (!fileId || !fileName || !blobName) {
       context.res = createErrorResponse('fileId, fileName, and blobName are required', 400);
+      return;
+    }
+    
+    // Check permission to upload to this folder
+    const access = await checkFolderAccess(user, parentId || null, PERMISSION.WRITE, storageService);
+    if (!access.allowed) {
+      context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
       return;
     }
 

@@ -1,8 +1,15 @@
-const { getEntityByRowKey, generateSasUrl } = require('../shared/storageService');
+const storageService = require('../shared/storageService');
+const { getEntityByRowKey, generateSasUrl } = storageService;
 const { createSuccessResponse, createErrorResponse, handleError } = require('../shared/utils');
+const { requireAuth } = require('../shared/auth');
+const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
+    // Require authentication
+    const user = requireAuth(context, req);
+    if (!user) return;
+    
     const { id } = req.params;
     
     if (!id) {
@@ -15,6 +22,14 @@ module.exports = async function (context, req) {
     
     if (!file) {
       context.res = createErrorResponse('File not found', 404);
+      return;
+    }
+    
+    // Check permission to download (need READ on parent folder)
+    const parentId = file.parentId || null;
+    const access = await checkFolderAccess(user, parentId, PERMISSION.READ, storageService);
+    if (!access.allowed) {
+      context.res = createErrorResponse('You do not have permission to download this file', 403);
       return;
     }
     

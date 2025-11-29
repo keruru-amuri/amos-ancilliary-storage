@@ -9,6 +9,26 @@
     {
       "route": "/",
       "redirect": "/amos-cloudstore"
+    },
+    {
+      "route": "/login",
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/amos-cloudstore"
+    },
+    {
+      "route": "/logout",
+      "redirect": "/.auth/logout?post_logout_redirect_uri=/amos-cloudstore"
+    },
+    {
+      "route": "/.auth/login/github",
+      "statusCode": 404
+    },
+    {
+      "route": "/.auth/login/twitter",
+      "statusCode": 404
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"]
     }
   ],
   "navigationFallback": {
@@ -26,6 +46,14 @@
     ".css": "text/css"
   },
   "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/amos-cloudstore",
+      "statusCode": 302
+    },
+    "403": {
+      "rewrite": "/amos-cloudstore/index.html",
+      "statusCode": 403
+    },
     "404": {
       "rewrite": "/index.html",
       "statusCode": 200
