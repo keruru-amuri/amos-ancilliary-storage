@@ -1,24 +1,26 @@
 const storageService = require('../shared/storageService');
 const { queryEntities } = storageService;
 const { createSuccessResponse, mapEntityToItem, handleError } = require('../shared/utils');
-const { requireAuth } = require('../shared/auth');
+const { getCurrentUser } = require('../shared/auth');
 const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
-    // Require authentication
-    const user = requireAuth(context, req);
-    if (!user) return;
+    // Get user (can be null for anonymous access)
+    const user = getCurrentUser(req);
     
     const { parentId } = req.query;
     
-    // Check permission to view this folder
+    // Check permission to view this folder (anonymous users get public READ access)
     const access = await checkFolderAccess(user, parentId || null, PERMISSION.READ, storageService);
     if (!access.allowed) {
       context.res = {
-        status: 403,
+        status: user ? 403 : 401,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'You do not have permission to view this folder', statusCode: 403 })
+        body: JSON.stringify({ 
+          error: user ? 'You do not have permission to view this folder' : 'Authentication required',
+          statusCode: user ? 403 : 401 
+        })
       };
       return;
     }
