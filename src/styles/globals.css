@@ -213,7 +213,9 @@ html {
 }
 
 /* Comfortable horizontal padding for compact labels like "1 file selected" */
-.text-sm.font-medium {
-  padding-left: calc(var(--spacing) * 3);
-  padding-right: calc(var(--spacing) * 3);
+@layer utilities {
+  .text-sm.font-medium {
+    padding-left: calc(var(--spacing) * 3) !important;
+    padding-right: calc(var(--spacing) * 3) !important;
+  }
 }
