@@ -40,8 +40,13 @@ export function Header() {
                 <div className="flex items-center justify-end gap-2">
                   <p className="text-foreground">{user.displayName || user.email}</p>
                   {isAdmin && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      <Shield className="w-3 h-3" />
+                    <span
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-tr from-primary/10 via-primary/8 to-transparent text-primary border border-primary/20 shadow-sm"
+                      title="Administrator"
+                      role="status"
+                      aria-label="Administrator"
+                    >
+                      <Shield className="w-4 h-4 stroke-[1.6]" />
                       Admin
                     </span>
                   )}
