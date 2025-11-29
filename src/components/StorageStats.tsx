@@ -67,10 +67,7 @@ export function StorageStats({ totalItems }: StorageStatsProps) {
             </div>
           </div>
           
-          <div className="pt-2 border-t border-border space-y-1">
-            <p className="text-muted-foreground">{stats?.itemCount || 0} total items</p>
-            <p className="text-muted-foreground text-sm">{stats?.fileCount || 0} files, {stats?.folderCount || 0} folders</p>
-          </div>
+          {/* omitted total counts to avoid confusion between account and folder scopes */}
         </div>
       )}
     </div>
