@@ -69,7 +69,7 @@ export function UploadConfirmationModal({
           {/* Summary */}
           <div className="mb-4 p-3 bg-muted rounded-[var(--radius)] border border-border">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium px-3">
                 {totalCount} {totalCount === 1 ? 'file' : 'files'} selected
               </span>
               <span className="text-sm text-muted-foreground">
