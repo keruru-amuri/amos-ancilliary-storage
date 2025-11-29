@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileItem } from '../App';
 import api from '../services/api';
 import { uploadFileWithChunks, shouldUseChunkedUpload } from '../services/chunkedUpload';
@@ -7,7 +7,7 @@ import { FileItemComponent } from './FileItemComponent';
 import { CreateItemModal } from './CreateItemModal';
 import { UploadConfirmationModal } from './UploadConfirmationModal';
 import { StorageStats } from './StorageStats';
-import { FolderPlus, Upload, ArrowUp } from 'lucide-react';
+import { FolderPlus, Upload, ArrowUp, Search, X } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 
 interface FileExplorerProps {
@@ -42,6 +42,12 @@ export function FileExplorer({
     currentFileName: '', 
     percentage: 0 
   });
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FileItem[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Get current folder's items
   const currentItems = items.filter(item => item.parentId === currentFolderId);
@@ -293,6 +299,45 @@ export function FileExplorer({
     setCurrentFolderId(folderId);
   };
 
+  // Debounced search effect — queries the API.search endpoint
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim() === '') {
+      setSearchResults(null);
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    const query = searchQuery.trim();
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      setSearchError(null);
+      try {
+        const results = await api.search.search(query, currentFolderId);
+        // convert results to local FileItem shape
+        const converted = results.map(r => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          parentId: r.parentId,
+          fileType: r.fileType,
+          size: r.size,
+          createdAt: new Date(r.createdAt).getTime(),
+          downloadUrl: r.downloadUrl
+        }));
+        setSearchResults(converted);
+      } catch (err: any) {
+        console.error('Search failed', err);
+        setSearchResults([]);
+        setSearchError(err?.message || 'Search failed');
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentFolderId]);
+
   const handleGoUp = () => {
     // Get parent from breadcrumb path instead of items array
     if (breadcrumbPath.length > 0) {
@@ -309,6 +354,32 @@ export function FileExplorer({
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-sidebar">
+
+      {/* Search (moved to the sidebar) */}
+      <div className="px-6 py-4 border-b border-sidebar-border bg-card flex-shrink-0">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <input
+            aria-label="Search files and folders"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search files and folders..."
+            className="w-full pl-10 pr-10 py-2.5 bg-input-background border border-border rounded-[var(--radius)] outline-none focus:ring-2 focus:ring-ring"
+          />
+          {searchQuery && (
+            <button
+              title="Clear search"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[var(--radius)] hover:bg-accent/10 transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+          {isSearching && (
+            <div className="absolute right-10 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Searching…</div>
+          )}
+        </div>
+      </div>
 
       {/* Breadcrumb Navigation */}
       <div className="px-6 py-4 border-b border-sidebar-border bg-card flex-shrink-0">
@@ -358,9 +429,10 @@ export function FileExplorer({
         </div>
       )}
 
-      {/* File/Folder List */}
+      {/* File/Folder List (or search results) */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
-        {currentItems.length === 0 ? (
+        {/* Determine items to show: searchResults when present, otherwise current folder items */}
+        {((searchResults !== null) ? (searchResults.length === 0) : currentItems.length === 0) ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -373,7 +445,7 @@ export function FileExplorer({
         ) : (
           <div className="space-y-1">
             {/* Folders first, then files */}
-            {currentItems
+            {(searchResults ?? currentItems)
               .sort((a, b) => {
                 if (a.type === b.type) {
                   return a.name.localeCompare(b.name);
@@ -386,7 +458,13 @@ export function FileExplorer({
                   item={item}
                   onRename={handleRename}
                   onDelete={handleDelete}
-                  onFolderClick={handleFolderClick}
+                  onFolderClick={(id) => {
+                    // If user clicks a folder from search results, navigate into it
+                    handleFolderClick(id);
+                    // clear search so user sees folder contents
+                    setSearchQuery('');
+                    setSearchResults(null);
+                  }}
                   onFileClick={onFileSelect}
                   isSelected={item.id === selectedFileId}
                 />

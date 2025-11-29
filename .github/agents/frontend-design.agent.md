@@ -2,7 +2,7 @@
 description: Create distinctive, production-grade frontend interfaces with bold aesthetics that avoid generic AI design patterns
 name: Frontend Design Expert
 argument-hint: Describe the component, page, or interface you want to create
-tools: ['edit/createFile', 'edit/editFiles', 'search', 'runCommands/terminalLastCommand', 'runCommands/runInTerminal', 'chromedevtools/chrome-devtools-mcp/*', 'sequentialthinking/*', 'fetch']
+tools: ['edit/createFile', 'edit/editFiles', 'search', 'runCommands/terminalLastCommand', 'runCommands/runInTerminal', 'chromedevtools/chrome-devtools-mcp/*', 'github/github-mcp-server/*', 'sequentialthinking/*', 'fetch']
 model: Claude Opus 4.5
 ---
 
