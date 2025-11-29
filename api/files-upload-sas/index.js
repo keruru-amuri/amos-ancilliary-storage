@@ -22,23 +22,30 @@ module.exports = async function (context, req) {
 
     const { fileName, parentId, fileType, fileSize } = req.body;
 
-    // If anonymous uploads are allowed but user is anonymous, enforce restriction: root only
-    if (!user && allowAnonymous && parentId) {
-      context.res = createErrorResponse('Anonymous uploads are only permitted to the root folder', 403);
-      return;
-    }
 
     if (!fileName) {
       context.res = createErrorResponse('fileName is required', 400);
       return;
     }
     
-    // Check permission to upload to this folder
-    const access = await checkFolderAccess(user, parentId || null, PERMISSION.WRITE, storageService);
-    if (!access.allowed) {
-      context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
-      return;
-    }
+    
+        
+      // If the requester is anonymous and anonymous uploads are enabled
+      // allow uploads only to the root folder and skip the folder permission check.
+      if (!user && allowAnonymous) {
+        if (parentId) {
+          context.res = createErrorResponse('Anonymous uploads are only permitted to the root folder', 403);
+          return;
+        }
+        // anonymous root upload permitted - skip permission checks
+      } else {
+        // For authenticated users validate write access to the target folder
+        const access = await checkFolderAccess(user, parentId || null, PERMISSION.WRITE, storageService);
+        if (!access.allowed) {
+          context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
+          return;
+        }
+      }
 
     // Get storage account credentials
     const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
