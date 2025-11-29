@@ -198,6 +198,16 @@ mabes-amos-ancilliary/
 
 ### Static Web App (`staticwebapp.config.json`)
 
+### Anonymous uploads (opt-in)
+
+If you need to allow uploads from unauthenticated users temporarily, set the environment variable `ALLOW_ANONYMOUS_UPLOADS=true` in your Static Web App or Functions configuration. When enabled:
+
+- Anonymous uploads are permitted only to the root folder (parentId = null).
+- This is intended as a short-term, opt-in workaround while proper authentication is being enabled.
+- Be aware this increases risk — consider additional protections (rate limiting, virus scanning, or a public uploads workflow).
+
+See `docs/ANONYMOUS_UPLOADS.md` for details and recommendations.
+
 ```json
 {
   "platform": { "apiRuntime": "node:20" },
