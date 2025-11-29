@@ -205,7 +205,16 @@ export function FileExplorer({
         toast.success(`"${file.name}" uploaded successfully`);
       } catch (error: any) {
         console.error('Failed to upload file:', error);
-        toast.error(`Failed to upload "${file.name}": ` + (error.message || 'Unknown error'));
+        const msg = error?.message || 'Unknown error';
+
+        // Friendly hints for common failure reasons
+        if (msg.toLowerCase().includes('permission')) {
+          toast.error(`Failed to upload "${file.name}": ${msg} — you may need write access for this folder.`);
+        } else if (msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('sign in')) {
+          toast.error(`Failed to upload "${file.name}": ${msg} — please sign in and try again.`);
+        } else {
+          toast.error(`Failed to upload "${file.name}": ${msg}`);
+        }
       }
     }
 

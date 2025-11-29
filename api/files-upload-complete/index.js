@@ -6,9 +6,13 @@ const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
-    // Require authentication
+    // Require authentication, or allow anonymous uploads when configured
     const user = requireAuth(context, req);
-    if (!user) return;
+    const allowAnonymous = process.env.ALLOW_ANONYMOUS_UPLOADS === 'true';
+
+    if (!user && !allowAnonymous) {
+      return; // requireAuth already set 401
+    }
     
     context.log('Committing upload metadata');
 
@@ -19,11 +23,18 @@ module.exports = async function (context, req) {
       return;
     }
     
-    // Check permission to upload to this folder
-    const access = await checkFolderAccess(user, parentId || null, PERMISSION.WRITE, storageService);
-    if (!access.allowed) {
-      context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
+    // Check permission to upload to this folder. For anonymous, allow only root
+    if (!user && allowAnonymous && parentId) {
+      context.res = createErrorResponse('Anonymous uploads are only permitted to the root folder', 403);
       return;
+    }
+
+    if (user) {
+      const access = await checkFolderAccess(user, parentId || null, PERMISSION.WRITE, storageService);
+      if (!access.allowed) {
+        context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
+        return;
+      }
     }
 
     context.log('File info:', {

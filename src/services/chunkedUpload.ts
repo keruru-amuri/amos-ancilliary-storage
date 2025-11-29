@@ -59,7 +59,19 @@ export async function uploadFileWithChunks(
     });
 
     if (!sasResponse.ok) {
+      // Provide helpful client-facing messages for common failure modes
+      const status = sasResponse.status;
       const errorData = await sasResponse.json().catch(() => ({ error: 'Failed to get upload token' }));
+
+      if (status === 401) {
+        throw new Error('Authentication required. Please sign in and try again.');
+      }
+
+      if (status === 403) {
+        // Folder-level permissions may block uploads for non-admin users
+        throw new Error(errorData.error || 'You do not have permission to upload to this folder. Ask an admin to grant you write access.');
+      }
+
       throw new Error(errorData.error || 'Failed to get upload token');
     }
 
@@ -144,7 +156,17 @@ export async function uploadFileWithChunks(
     });
 
     if (!completeResponse.ok) {
+      const status = completeResponse.status;
       const errorData = await completeResponse.json().catch(() => ({ error: 'Failed to save file metadata' }));
+
+      if (status === 401) {
+        throw new Error('Authentication required while committing upload. Please sign in and try again.');
+      }
+
+      if (status === 403) {
+        throw new Error(errorData.error || 'You do not have permission to save files in this folder.');
+      }
+
       throw new Error(errorData.error || 'Failed to save file metadata');
     }
 

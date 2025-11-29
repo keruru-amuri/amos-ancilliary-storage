@@ -54,9 +54,16 @@ function parseMultipartForm(req) {
 
 module.exports = async function (context, req) {
   try {
-    // Require authentication
+    // Require authentication, or allow anonymous uploads when configured
     const user = requireAuth(context, req);
-    if (!user) return;
+    const allowAnonymous = process.env.ALLOW_ANONYMOUS_UPLOADS === 'true';
+
+    if (!user) {
+      if (!allowAnonymous) return; // requireAuth already set 401
+      // For anonymous uploads we only permit root uploads (parentId must be null or 'root')
+      // We'll still continue, checking parentId further down after parsing form
+      context.log('Anonymous uploads enabled - continuing as anonymous user');
+    }
     
     context.log('Upload started');
     context.log('Content-Type:', req.headers['content-type']);
@@ -79,11 +86,20 @@ module.exports = async function (context, req) {
     const uploadedFile = files.file[0];
     const parentId = fields.parentId && fields.parentId[0] ? fields.parentId[0] : null;
     
-    // Check permission to upload to this folder
-    const access = await checkFolderAccess(user, parentId, PERMISSION.WRITE, storageService);
-    if (!access.allowed) {
-      context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
-      return;
+    // Check permission to upload to this folder. If anonymous user is allowed, restrict to root.
+    if (!user && allowAnonymous) {
+      // If parentId provided and not root, deny
+      if (parentId) {
+        context.res = createErrorResponse('Anonymous uploads are only permitted to the root folder', 403);
+        return;
+      }
+      // anonymous root upload permitted
+    } else {
+      const access = await checkFolderAccess(user, parentId, PERMISSION.WRITE, storageService);
+      if (!access.allowed) {
+        context.res = createErrorResponse('You do not have permission to upload to this folder', 403);
+        return;
+      }
     }
     
     const fileType = fields.fileType && fields.fileType[0] ? fields.fileType[0] : determineFileType(uploadedFile.originalFilename);

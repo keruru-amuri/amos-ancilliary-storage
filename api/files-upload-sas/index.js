@@ -8,13 +8,25 @@ const { PERMISSION, checkFolderAccess } = require('../shared/permissions');
 
 module.exports = async function (context, req) {
   try {
-    // Require authentication
+    // Require authentication OR allow anonymous uploads when configured
     const user = requireAuth(context, req);
-    if (!user) return;
+    const allowAnonymous = process.env.ALLOW_ANONYMOUS_UPLOADS === 'true';
+
+    // If user is not authenticated, allow anonymous uploads only when enabled
+    // and only for root uploads (parentId === null)
+    if (!user && !allowAnonymous) {
+      return; // requireAuth already set 401
+    }
     
     context.log('Generating SAS token for direct upload');
 
     const { fileName, parentId, fileType, fileSize } = req.body;
+
+    // If anonymous uploads are allowed but user is anonymous, enforce restriction: root only
+    if (!user && allowAnonymous && parentId) {
+      context.res = createErrorResponse('Anonymous uploads are only permitted to the root folder', 403);
+      return;
+    }
 
     if (!fileName) {
       context.res = createErrorResponse('fileName is required', 400);
