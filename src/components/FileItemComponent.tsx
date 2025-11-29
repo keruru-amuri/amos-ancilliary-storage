@@ -117,6 +117,16 @@ export function FileItemComponent({
           ? 'bg-sidebar-primary text-sidebar-primary-foreground'
           : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
       }`}
+      onClick={() => { if (!isEditing) handleClick(); }}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (isEditing) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
     >
       {/* Icon */}
       <div className="flex-shrink-0">
@@ -140,12 +150,7 @@ export function FileItemComponent({
             className="w-full px-2 py-1 bg-input-background border border-border rounded-[var(--radius)] outline-none focus:ring-2 focus:ring-ring text-foreground"
           />
         ) : (
-          <button
-            onClick={handleClick}
-            className="w-full text-left truncate"
-          >
-            {item.name}
-          </button>
+          <div className="w-full text-left truncate">{item.name}</div>
         )}
       </div>
 
