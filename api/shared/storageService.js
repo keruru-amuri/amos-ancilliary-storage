@@ -218,15 +218,6 @@ async function queryPermissionEntities(filter) {
   
   return entities;
 }
-    
-    return entity;
-  } catch (error) {
-    if (error.statusCode === 404) {
-      return null;
-    }
-    throw error;
-  }
-}
 
 // Blob Storage Operations
 async function uploadBlob(blobName, buffer, contentType) {
