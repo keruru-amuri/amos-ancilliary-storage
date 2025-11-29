@@ -16,19 +16,18 @@ async function calculateStorageStats() {
     usedBytes += file.size || 0;
   }
   
-  // For demo purposes, set a generous total capacity
-  // In production, you might query the actual storage account quota
-  const totalBytes = 50 * 1024 * 1024 * 1024; // 50 GB
-  
+  // We do not enforce a local quota here — Azure storage accounts have very large limits.
+  // Avoid returning a hard-coded total capacity to prevent clients from showing misleading quotas.
   return {
     usedBytes,
-    totalBytes,
+    // totalBytes intentionally omitted (null) so UI/clients should not show an arbitrary limit
+    totalBytes: null,
     itemCount: fileEntities.length + folderEntities.length,
     fileCount: fileEntities.length,
     folderCount: folderEntities.length,
     usedGB: (usedBytes / (1024 * 1024 * 1024)).toFixed(2),
-    totalGB: (totalBytes / (1024 * 1024 * 1024)).toFixed(1),
-    percentageUsed: ((usedBytes / totalBytes) * 100).toFixed(1)
+    totalGB: null,
+    percentageUsed: null
   };
 }
 
