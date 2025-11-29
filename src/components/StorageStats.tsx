@@ -65,7 +65,6 @@ export function StorageStats({ totalItems }: StorageStatsProps) {
               <span className="text-foreground font-semibold text-lg">{usedGB.toFixed(1)} GB</span>
               <span className="text-muted-foreground text-sm">used</span>
             </div>
-            <span className="text-muted-foreground text-xs italic">No quota — Azure Blob Storage</span>
           </div>
           
           <div className="pt-2 border-t border-border space-y-1">
