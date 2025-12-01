@@ -2,6 +2,17 @@
   "platform": {
     "apiRuntime": "node:20"
   },
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/cb05c771-f9e6-458c-a158-67b16e839f99/v2.0",
+          "clientIdSettingName": "AZURE_CLIENT_ID",
+          "clientSecretSettingName": "AZURE_AD_CLIENT_SECRET"
+        }
+      }
+    }
+  },
   "routes": [
     {
       "route": "/",
@@ -9,11 +20,11 @@
     },
     {
       "route": "/login",
-      "rewrite": "/amos-cloudstore/index.html"
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/amos-cloudstore"
     },
     {
       "route": "/logout",
-      "rewrite": "/amos-cloudstore/index.html"
+      "redirect": "/.auth/logout?post_logout_redirect_uri=/amos-cloudstore"
     },
     {
       "route": "/.auth/login/github",
