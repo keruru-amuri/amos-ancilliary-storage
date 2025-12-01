@@ -7,6 +7,7 @@ const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const useConnectionString = process.env.USE_CONNECTION_STRING === 'true';
+const managedIdentityClientId = process.env.AZURE_CLIENT_ID;
 
 // Constants
 const TABLE_NAME = "filesMetadata";
@@ -27,7 +28,10 @@ let credential = null;
 
 function getCredential() {
   if (!credential && useManagedIdentity) {
-    credential = new DefaultAzureCredential();
+    // Use explicit client ID for user-assigned managed identity
+    credential = new DefaultAzureCredential({
+      managedIdentityClientId
+    });
   }
   return credential;
 }
@@ -252,22 +256,49 @@ async function getBlobProperties(blobName) {
   }
 }
 
-// SAS Token Generation
-function generateSasUrl(blobName, expiryMinutes = 60) {
-  const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+// SAS Token Generation - Using User Delegation SAS for Managed Identity
+async function generateSasUrl(blobName, expiryMinutes = 60) {
+  const startsOn = new Date(new Date().valueOf() - 15 * 60 * 1000);
+  const expiresOn = new Date(new Date().valueOf() + expiryMinutes * 60 * 1000);
+
+  // If we have account key, use the traditional method (for local dev)
+  if (accountKey) {
+    const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+    
+    const sasOptions = {
+      containerName: CONTAINER_NAME,
+      blobName: blobName,
+      permissions: BlobSASPermissions.parse("r"),
+      startsOn: startsOn,
+      expiresOn: expiresOn
+    };
+    
+    const sasToken = generateBlobSASQueryParameters(sasOptions, sharedKeyCredential).toString();
+    return `https://${accountName}.blob.core.windows.net/${CONTAINER_NAME}/${blobName}?${sasToken}`;
+  }
+  
+  // Use User Delegation SAS for Managed Identity
+  const blobServiceClient = getBlobServiceClient();
+  
+  // Get user delegation key (requires Storage Blob Delegator role)
+  let userDelegationKey;
+  try {
+    userDelegationKey = await blobServiceClient.getUserDelegationKey(startsOn, expiresOn);
+  } catch (error) {
+    error.message = `Failed to get user delegation key for SAS generation. Ensure the managed identity has the 'Storage Blob Delegator' role. Original error: ${error.message}`;
+    throw error;
+  }
   
   const sasOptions = {
     containerName: CONTAINER_NAME,
     blobName: blobName,
-    permissions: BlobSASPermissions.parse("r"), // read-only
-    startsOn: new Date(new Date().valueOf() - 15 * 60 * 1000), // 15 min buffer for clock skew
-    expiresOn: new Date(new Date().valueOf() + expiryMinutes * 60 * 1000)
+    permissions: BlobSASPermissions.parse("r"),
+    startsOn: startsOn,
+    expiresOn: expiresOn
   };
   
-  const sasToken = generateBlobSASQueryParameters(sasOptions, sharedKeyCredential).toString();
-  const sasUrl = `https://${accountName}.blob.core.windows.net/${CONTAINER_NAME}/${blobName}?${sasToken}`;
-  
-  return sasUrl;
+  const sasToken = generateBlobSASQueryParameters(sasOptions, userDelegationKey, accountName).toString();
+  return `https://${accountName}.blob.core.windows.net/${CONTAINER_NAME}/${blobName}?${sasToken}`;
 }
 
 // Helper Functions
