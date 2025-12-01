@@ -43,74 +43,56 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading: true,
     error: null
   });
-  const [mockToken, setMockToken] = useState<string | null>(null);
 
   const fetchUser = async () => {
     try {
-      // First check if we have stored mock auth
-      const storedAuth = getStoredAuth();
+      // Check SWA built-in auth
+      const swaResponse = await fetch('/.auth/me');
       
-      if (storedAuth) {
-        setMockToken(storedAuth.mockToken);
-        setState({
-          user: storedAuth.user,
-          isAuthenticated: true,
-          isAdmin: storedAuth.isAdmin,
-          loading: false,
-          error: null
-        });
-        return;
-      }
-      
-      // Try SWA built-in auth (will work once admin consent is granted)
-      try {
-        const swaResponse = await fetch('/.auth/me');
+      if (swaResponse.ok) {
+        const swaData = await swaResponse.json();
         
-        if (swaResponse.ok) {
-          const swaData = await swaResponse.json();
+        if (swaData.clientPrincipal) {
+          const principal = swaData.clientPrincipal;
           
-          if (swaData.clientPrincipal) {
-            const principal = swaData.clientPrincipal;
-            
-            // Get admin status from our API
-            try {
-              const apiResponse = await fetch('/api/auth/me');
-              if (apiResponse.ok) {
-                const apiData = await apiResponse.json();
-                
-                setState({
-                  user: apiData.user || {
-                    email: principal.userDetails,
-                    displayName: principal.userDetails,
-                    userId: principal.userId,
-                    identityProvider: principal.identityProvider
-                  },
-                  isAuthenticated: true,
-                  isAdmin: apiData.isAdmin || false,
-                  loading: false,
-                  error: null
-                });
-                return;
-              }
-            } catch (apiError) {
-              console.warn('Failed to get API auth info:', apiError);
+          // Get admin status from our API
+          try {
+            const apiResponse = await fetch('/api/auth/me');
+            if (apiResponse.ok) {
+              const apiData = await apiResponse.json();
+              
+              setState({
+                user: apiData.user || {
+                  email: principal.userDetails,
+                  displayName: principal.userDetails,
+                  userId: principal.userId,
+                  identityProvider: principal.identityProvider
+                },
+                isAuthenticated: true,
+                isAdmin: apiData.isAdmin || false,
+                loading: false,
+                error: null
+              });
+              return;
             }
-            
-            // Fallback: use SWA data only
-            setState({
-              user: {
-                email: principal.userDetails,
-                displayName: principal.userDetails,
-                userId: principal.userId,
-                identityProvider: principal.identityProvider
-              },
-              isAuthenticated: true,
-              isAdmin: false,
-              loading: false,
-              error: null
-            });
-            return;
+          } catch (apiError) {
+            console.warn('Failed to get API auth info:', apiError);
           }
+          
+          // Fallback: use SWA data only
+          setState({
+            user: {
+              email: principal.userDetails,
+              displayName: principal.userDetails,
+              userId: principal.userId,
+              identityProvider: principal.identityProvider
+            },
+            isAuthenticated: true,
+            isAdmin: false,
+            loading: false,
+            error: null
+          });
+          return;
         }
       }
       
