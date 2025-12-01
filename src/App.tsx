@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FileExplorer } from './components/FileExplorer';
 import { FileViewer } from './components/FileViewer';
 import { Header } from './components/Header';
+import { LoginRequired } from './components/LoginRequired';
 import { Toaster, toast } from 'sonner@2.0.3';
 import api, { type FileItem as ApiFileItem } from './services/api';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -66,25 +67,14 @@ const getSampleData = (): FileItem[] => {
 };
 
 function MainApp() {
+  // Auth check - must be before any conditional returns
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  
   const [items, setItems] = useState<FileItem[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [breadcrumbPath, setBreadcrumbPath] = useState<FileItem[]>([]);
-
-  // Load items from API on mount
-  useEffect(() => {
-    loadItems();
-  }, []);
-
-  // Load breadcrumb path when folder changes
-  useEffect(() => {
-    if (currentFolderId) {
-      loadBreadcrumbPath(currentFolderId);
-    } else {
-      setBreadcrumbPath([]);
-    }
-  }, [currentFolderId]);
 
   // Load breadcrumb path for current folder
   const loadBreadcrumbPath = async (folderId: string) => {
@@ -93,7 +83,6 @@ function MainApp() {
       setBreadcrumbPath(path);
     } catch (error: any) {
       console.error('Failed to load breadcrumb path:', error);
-      // Don't show error toast for breadcrumbs, just use empty path
       setBreadcrumbPath([]);
     }
   };
@@ -104,7 +93,6 @@ function MainApp() {
       setLoading(true);
       const apiItems = await api.items.list(folderId);
       
-      // Convert API items to app format
       const convertedItems: FileItem[] = apiItems.map(item => ({
         id: item.id,
         name: item.name,
@@ -120,16 +108,29 @@ function MainApp() {
     } catch (error: any) {
       console.error('Failed to load items:', error);
       toast.error('Failed to load files: ' + (error.message || 'Unknown error'));
-      // Fall back to empty array
       setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Load items on mount
+  useEffect(() => {
+    loadItems();
+  }, []);
+
   // Reload items when folder changes
   useEffect(() => {
     loadItems(currentFolderId);
+  }, [currentFolderId]);
+
+  // Load breadcrumb path when folder changes
+  useEffect(() => {
+    if (currentFolderId) {
+      loadBreadcrumbPath(currentFolderId);
+    } else {
+      setBreadcrumbPath([]);
+    }
   }, [currentFolderId]);
 
   // Reset selected file when navigating to another folder
@@ -156,6 +157,21 @@ function MainApp() {
       )
     );
   };
+
+  if (authLoading) {
+    return (
+      <div className="h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginRequired />;
+  }
 
   if (loading) {
     return (
