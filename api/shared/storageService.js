@@ -30,7 +30,7 @@ function getCredential() {
   if (!credential && useManagedIdentity) {
     // Use explicit client ID for user-assigned managed identity
     credential = new DefaultAzureCredential({
-      managedIdentityClientId: managedIdentityClientId
+      managedIdentityClientId
     });
   }
   return credential;
@@ -280,8 +280,14 @@ async function generateSasUrl(blobName, expiryMinutes = 60) {
   // Use User Delegation SAS for Managed Identity
   const blobServiceClient = getBlobServiceClient();
   
-  // Get user delegation key (valid for up to 7 days)
-  const userDelegationKey = await blobServiceClient.getUserDelegationKey(startsOn, expiresOn);
+  // Get user delegation key (requires Storage Blob Delegator role)
+  let userDelegationKey;
+  try {
+    userDelegationKey = await blobServiceClient.getUserDelegationKey(startsOn, expiresOn);
+  } catch (error) {
+    error.message = `Failed to get user delegation key for SAS generation. Ensure the managed identity has the 'Storage Blob Delegator' role. Original error: ${error.message}`;
+    throw error;
+  }
   
   const sasOptions = {
     containerName: CONTAINER_NAME,
