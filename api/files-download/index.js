@@ -45,7 +45,7 @@ module.exports = async function (context, req) {
     }
     
     // Generate SAS URL with 60-minute expiry
-    const downloadUrl = generateSasUrl(file.blobName, 60);
+    const downloadUrl = await generateSasUrl(file.blobName, 60);
     
     context.res = createSuccessResponse({
       downloadUrl,

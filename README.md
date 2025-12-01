@@ -223,9 +223,32 @@ See `docs/ANONYMOUS_UPLOADS.md` for details and recommendations.
 
 | Variable | Description |
 |----------|-------------|
-| `AZURE_STORAGE_CONNECTION_STRING` | Full connection string from Storage Account |
 | `AZURE_STORAGE_ACCOUNT_NAME` | Storage account name |
-| `AZURE_STORAGE_ACCOUNT_KEY` | Storage account access key |
+| `AZURE_CLIENT_ID` | Client ID of User-Assigned Managed Identity (for Managed Identity auth) |
+| `AZURE_TENANT_ID` | Tenant ID (for Managed Identity auth) |
+| `AZURE_STORAGE_CONNECTION_STRING` | Full connection string (local dev only) |
+| `AZURE_STORAGE_ACCOUNT_KEY` | Storage account access key (alternative to Managed Identity) |
+
+### Managed Identity Authentication
+
+For production deployments using User-Assigned Managed Identity, the identity requires the following RBAC roles on the storage account:
+
+| Role | Purpose |
+|------|---------|
+| **Storage Blob Data Contributor** | Read/write blob operations |
+| **Storage Table Data Contributor** | Read/write table operations |
+| **Storage Blob Delegator** | Generate User Delegation SAS tokens |
+
+To assign these roles via Azure CLI:
+```bash
+# Get the Managed Identity's Object ID
+IDENTITY_OBJECT_ID=$(az identity show --name <identity-name> --resource-group <rg> --query principalId -o tsv)
+
+# Assign roles on the storage account
+az role assignment create --role "Storage Blob Data Contributor" --assignee $IDENTITY_OBJECT_ID --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-account>
+az role assignment create --role "Storage Table Data Contributor" --assignee $IDENTITY_OBJECT_ID --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-account>
+az role assignment create --role "Storage Blob Delegator" --assignee $IDENTITY_OBJECT_ID --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-account>
+```
 
 ## Storage Tier Decision
 
@@ -246,8 +269,8 @@ See `docs/ANONYMOUS_UPLOADS.md` for details and recommendations.
 ## Security
 
 - **Authentication**: Currently anonymous (single-user demo)
-- **Storage Access**: Functions use account keys (never exposed to frontend)
-- **File Access**: Time-limited SAS tokens (60-minute expiry)
+- **Storage Access**: Functions use Managed Identity (recommended) or account keys (never exposed to frontend)
+- **File Access**: Time-limited SAS tokens (60-minute expiry) using User Delegation SAS with Managed Identity
 - **CORS**: Configured for Static Web App domain only
 - **Future**: Add Azure AD B2C for multi-user authentication
 
