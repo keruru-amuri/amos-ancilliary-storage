@@ -28,10 +28,11 @@ let credential = null;
 
 function getCredential() {
   if (!credential && useManagedIdentity) {
-    // Use explicit client ID for user-assigned managed identity
-    credential = new DefaultAzureCredential({
-      managedIdentityClientId: managedIdentityClientId
-    });
+    // Use explicit client ID for user-assigned managed identity if provided
+    const options = managedIdentityClientId 
+      ? { managedIdentityClientId: managedIdentityClientId }
+      : {};
+    credential = new DefaultAzureCredential(options);
   }
   return credential;
 }
@@ -258,8 +259,8 @@ async function getBlobProperties(blobName) {
 
 // SAS Token Generation
 async function generateSasUrl(blobName, expiryMinutes = 60) {
-  // If we have account key, use traditional SAS (for local dev with connection string)
-  if (accountKey) {
+  // If we have account key and account name, use traditional SAS (for local dev with connection string)
+  if (accountKey && accountName) {
     const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
     
     const sasOptions = {
