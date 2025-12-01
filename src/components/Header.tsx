@@ -46,6 +46,7 @@ export function Header() {
                   {/* Admin badge moved to the brand area — kept out of the right user block to avoid duplication */}
                 </div>
                 <p className="text-muted-foreground text-sm">{user.email}</p>
+              </div>
               <div className="flex items-center gap-2">
                 <button 
                   className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:opacity-90 transition-opacity"
@@ -69,26 +70,25 @@ export function Header() {
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
-              </div>tton>
               </div>
             </>
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-      {/* Login Modal */}
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
-      
-      {/* Settings Modal */}
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
-    </header>
-  );
-}           </button>
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In</span>
+            </button>
           )}
         </div>
       </div>
 
       {/* Login Modal */}
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
+      
+      {/* Settings Modal */}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </header>
   );
 }
