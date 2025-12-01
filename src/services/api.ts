@@ -1,22 +1,7 @@
 // API Configuration
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
-const MOCK_AUTH_KEY = 'cloudstore_mock_auth';
 
-// Helper to get mock token from localStorage
-function getMockToken(): string | null {
-  try {
-    const stored = localStorage.getItem(MOCK_AUTH_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.mockToken || null;
-    }
-  } catch (e) {
-    console.error('Failed to get mock token:', e);
-  }
-  return null;
-}
-
-// Helper to get headers with auth
+// Helper to get headers with optional content type
 function getAuthHeaders(contentType?: string): HeadersInit {
   const headers: HeadersInit = {};
   
@@ -24,10 +9,8 @@ function getAuthHeaders(contentType?: string): HeadersInit {
     headers['Content-Type'] = contentType;
   }
   
-  const mockToken = getMockToken();
-  if (mockToken) {
-    headers['X-Mock-User'] = mockToken;
-  }
+  // SWA automatically includes x-ms-client-principal header for authenticated requests
+  // No need to manually add auth headers
   
   return headers;
 }
@@ -155,15 +138,9 @@ export const filesApi = {
     if (fileType) formData.append('fileType', fileType);
 
     // For FormData, don't set Content-Type (browser sets it with boundary)
-    const headers: HeadersInit = {};
-    const mockToken = getMockToken();
-    if (mockToken) {
-      headers['X-Mock-User'] = mockToken;
-    }
-
+    // SWA automatically includes x-ms-client-principal header for authenticated requests
     const response = await fetch(`${API_BASE_URL}/files/upload`, {
       method: 'POST',
-      headers,
       body: formData
     });
     return handleResponse<FileItem>(response);
