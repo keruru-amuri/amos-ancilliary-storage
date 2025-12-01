@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { User, LogIn, LogOut } from 'lucide-react';
+import { User, LogIn, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import logoSvg from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginModal } from './LoginModal';
+import { Settings } from './Settings';
 
 export function Header() {
   const { user, isAuthenticated, isAdmin, loading, logout } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <header className="bg-card border-b border-border">
@@ -44,7 +46,6 @@ export function Header() {
                   {/* Admin badge moved to the brand area — kept out of the right user block to avoid duplication */}
                 </div>
                 <p className="text-muted-foreground text-sm">{user.email}</p>
-              </div>
               <div className="flex items-center gap-2">
                 <button 
                   className="w-10 h-10 bg-primary rounded-full flex items-center justify-center hover:opacity-90 transition-opacity"
@@ -52,6 +53,15 @@ export function Header() {
                 >
                   <User className="w-5 h-5 text-primary-foreground" />
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Settings"
+                  >
+                    <SettingsIcon className="w-5 h-5" />
+                  </button>
+                )}
                 <button
                   onClick={logout}
                   className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -59,16 +69,20 @@ export function Header() {
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
+              </div>tton>
               </div>
             </>
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In</span>
-            </button>
+      {/* Login Modal */}
+      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} />
+      
+      {/* Settings Modal */}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+    </header>
+  );
+}           </button>
           )}
         </div>
       </div>

@@ -12,6 +12,8 @@ const managedIdentityClientId = process.env.AZURE_CLIENT_ID;
 // Constants
 const TABLE_NAME = "filesMetadata";
 const PERMISSIONS_TABLE_NAME = "folderPermissions";
+const WORKING_GROUPS_TABLE_NAME = "workingGroups";
+const USER_GROUP_ASSIGNMENTS_TABLE_NAME = "userGroupAssignments";
 const CONTAINER_NAME = "cloudstore-files";
 
 // Helper function to get container name
@@ -40,6 +42,8 @@ function getCredential() {
 // Table Storage Client
 let tableClient = null;
 let permissionsTableClient = null;
+let workingGroupsTableClient = null;
+let userGroupAssignmentsTableClient = null;
 
 function getTableClient() {
   if (!tableClient) {
@@ -88,6 +92,52 @@ function getPermissionsTableClient() {
     }
   }
   return permissionsTableClient;
+}
+
+function getWorkingGroupsTableClient() {
+  if (!workingGroupsTableClient) {
+    if (useConnectionString) {
+      workingGroupsTableClient = TableClient.fromConnectionString(connectionString, WORKING_GROUPS_TABLE_NAME);
+    } else if (accountKey) {
+      const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+      workingGroupsTableClient = new TableClient(
+        `https://${accountName}.table.core.windows.net`,
+        WORKING_GROUPS_TABLE_NAME,
+        sharedKeyCredential
+      );
+    } else {
+      const cred = getCredential();
+      workingGroupsTableClient = new TableClient(
+        `https://${accountName}.table.core.windows.net`,
+        WORKING_GROUPS_TABLE_NAME,
+        cred
+      );
+    }
+  }
+  return workingGroupsTableClient;
+}
+
+function getUserGroupAssignmentsTableClient() {
+  if (!userGroupAssignmentsTableClient) {
+    if (useConnectionString) {
+      userGroupAssignmentsTableClient = TableClient.fromConnectionString(connectionString, USER_GROUP_ASSIGNMENTS_TABLE_NAME);
+    } else if (accountKey) {
+      const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+      userGroupAssignmentsTableClient = new TableClient(
+        `https://${accountName}.table.core.windows.net`,
+        USER_GROUP_ASSIGNMENTS_TABLE_NAME,
+        sharedKeyCredential
+      );
+    } else {
+      const cred = getCredential();
+      userGroupAssignmentsTableClient = new TableClient(
+        `https://${accountName}.table.core.windows.net`,
+        USER_GROUP_ASSIGNMENTS_TABLE_NAME,
+        cred
+      );
+    }
+  }
+  return userGroupAssignmentsTableClient;
 }
 
 // Blob Storage Client
@@ -216,6 +266,89 @@ async function queryPermissionEntities(filter) {
   const client = getPermissionsTableClient();
   const entities = [];
   const iterator = client.listEntities({ queryOptions: { filter } });
+  
+  for await (const entity of iterator) {
+    entities.push(entity);
+  }
+  
+  return entities;
+}
+
+// Working Groups Operations
+async function createWorkingGroup(entity) {
+  const client = getWorkingGroupsTableClient();
+  await client.createEntity(entity);
+  return entity;
+}
+
+async function getWorkingGroup(groupId) {
+  const client = getWorkingGroupsTableClient();
+  return await client.getEntity('GROUPS', groupId);
+}
+
+async function updateWorkingGroup(entity) {
+  const client = getWorkingGroupsTableClient();
+  await client.updateEntity(entity, "Merge");
+  return entity;
+}
+
+async function deleteWorkingGroup(groupId) {
+  const client = getWorkingGroupsTableClient();
+  await client.deleteEntity('GROUPS', groupId);
+}
+
+async function listWorkingGroups() {
+  const client = getWorkingGroupsTableClient();
+  const entities = [];
+  const iterator = client.listEntities({ queryOptions: { filter: "PartitionKey eq 'GROUPS'" } });
+  
+  for await (const entity of iterator) {
+    entities.push(entity);
+  }
+  
+  return entities;
+}
+
+// User Group Assignments Operations
+async function assignUserToGroup(userEmail, groupId, assignedBy) {
+  const client = getUserGroupAssignmentsTableClient();
+  const entity = {
+    partitionKey: userEmail.toLowerCase(),
+    rowKey: groupId,
+    userEmail: userEmail.toLowerCase(),
+    groupId: groupId,
+    assignedBy: assignedBy,
+    assignedAt: new Date().toISOString()
+  };
+  await client.upsertEntity(entity, "Replace");
+  return entity;
+}
+
+async function removeUserFromGroup(userEmail, groupId) {
+  const client = getUserGroupAssignmentsTableClient();
+  await client.deleteEntity(userEmail.toLowerCase(), groupId);
+}
+
+async function getUserGroups(userEmail) {
+  const client = getUserGroupAssignmentsTableClient();
+  const entities = [];
+  const iterator = client.listEntities({ 
+    queryOptions: { filter: `PartitionKey eq '${userEmail.toLowerCase()}'` } 
+  });
+  
+  for await (const entity of iterator) {
+    entities.push(entity);
+  }
+  
+  return entities;
+}
+
+async function getGroupUsers(groupId) {
+  const client = getUserGroupAssignmentsTableClient();
+  const entities = [];
+  const iterator = client.listEntities({ 
+    queryOptions: { filter: `groupId eq '${groupId}'` } 
+  });
   
   for await (const entity of iterator) {
     entities.push(entity);
@@ -404,6 +537,18 @@ async function initializeStorage() {
       // Table might already exist, ignore error
     });
     
+    // Create working groups table if it doesn't exist
+    const groupsClient = getWorkingGroupsTableClient();
+    await groupsClient.createTable().catch(() => {
+      // Table might already exist, ignore error
+    });
+    
+    // Create user group assignments table if it doesn't exist
+    const assignmentsClient = getUserGroupAssignmentsTableClient();
+    await assignmentsClient.createTable().catch(() => {
+      // Table might already exist, ignore error
+    });
+    
     return true;
   } catch (error) {
     console.error('Failed to initialize storage:', error);
@@ -426,6 +571,19 @@ module.exports = {
   deletePermissionEntity,
   queryPermissionEntities,
   
+  // Working Groups
+  createWorkingGroup,
+  getWorkingGroup,
+  updateWorkingGroup,
+  deleteWorkingGroup,
+  listWorkingGroups,
+  
+  // User Group Assignments
+  assignUserToGroup,
+  removeUserFromGroup,
+  getUserGroups,
+  getGroupUsers,
+  
   // Blob Storage
   uploadBlob,
   deleteBlob,
@@ -443,5 +601,7 @@ module.exports = {
   // Constants
   TABLE_NAME,
   PERMISSIONS_TABLE_NAME,
+  WORKING_GROUPS_TABLE_NAME,
+  USER_GROUP_ASSIGNMENTS_TABLE_NAME,
   CONTAINER_NAME
 };

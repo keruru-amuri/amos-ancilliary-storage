@@ -170,6 +170,7 @@ async function getEffectivePermission(user, folderId, storageService) {
 
 /**
  * Get permission for a specific user on a specific folder
+ * Checks both direct user permissions and group permissions
  * @param {object} user - User object
  * @param {string} folderId - Folder ID
  * @param {object} storageService - Storage service module
@@ -181,21 +182,41 @@ async function getFolderPermissionForUser(user, folderId, storageService) {
   }
   
   try {
-    // Permission entities use folderId as partition, email as row key
+    // Check direct user permission first
     const partitionKey = folderId || 'root';
     const rowKey = sanitizeRowKey(user.email);
     
-    const entity = await storageService.getPermissionEntity(partitionKey, rowKey);
+    const userPermission = await storageService.getPermissionEntity(partitionKey, rowKey);
     
-    if (entity) {
+    if (userPermission) {
       return {
-        level: entity.permission || PERMISSION.NONE,
-        grantedBy: entity.grantedBy,
-        grantedAt: entity.grantedAt
+        level: userPermission.permission || PERMISSION.NONE,
+        grantedBy: userPermission.grantedBy,
+        grantedAt: userPermission.grantedAt
       };
     }
     
-    return null;
+    // Check group permissions
+    const userGroups = await storageService.getUserGroups(user.email);
+    let highestGroupPermission = null;
+    
+    for (const assignment of userGroups) {
+      const groupRowKey = `GROUP_${assignment.groupId}`;
+      const groupPermission = await storageService.getPermissionEntity(partitionKey, groupRowKey);
+      
+      if (groupPermission) {
+        const level = groupPermission.permission || PERMISSION.NONE;
+        if (!highestGroupPermission || level > highestGroupPermission.level) {
+          highestGroupPermission = {
+            level: level,
+            grantedBy: groupPermission.grantedBy,
+            grantedAt: groupPermission.grantedAt
+          };
+        }
+      }
+    }
+    
+    return highestGroupPermission;
   } catch (error) {
     console.error('Error getting folder permission:', error);
     return null;
@@ -228,7 +249,39 @@ async function grantFolderPermission(folderId, userEmail, level, grantedByUser, 
   const entity = {
     partitionKey: partitionKey,
     rowKey: rowKey,
+    principalType: 'user',
+    principalId: userEmail.toLowerCase(),
     userEmail: userEmail.toLowerCase(),
+    folderId: folderId,
+    permission: level,
+    permissionName: PERMISSION_NAMES[level],
+    grantedBy: grantedByUser.email,
+    grantedAt: new Date().toISOString()
+  };
+  
+  await storageService.upsertPermissionEntity(entity);
+  return entity;
+}
+
+/**
+ * Grant permission to a working group for a folder
+ * @param {string} folderId - Folder ID (null for root)
+ * @param {string} groupId - ID of the working group
+ * @param {number} level - Permission level
+ * @param {object} grantedByUser - User granting the permission
+ * @param {object} storageService - Storage service module
+ * @returns {Promise<object>}
+ */
+async function grantFolderPermissionToGroup(folderId, groupId, level, grantedByUser, storageService) {
+  const partitionKey = folderId || 'root';
+  const rowKey = `GROUP_${groupId}`;
+  
+  const entity = {
+    partitionKey: partitionKey,
+    rowKey: rowKey,
+    principalType: 'group',
+    principalId: groupId,
+    groupId: groupId,
     folderId: folderId,
     permission: level,
     permissionName: PERMISSION_NAMES[level],
@@ -250,6 +303,28 @@ async function grantFolderPermission(folderId, userEmail, level, grantedByUser, 
 async function revokeFolderPermission(folderId, userEmail, storageService) {
   const partitionKey = folderId || 'root';
   const rowKey = sanitizeRowKey(userEmail.toLowerCase());
+  
+  try {
+    await storageService.deletePermissionEntity(partitionKey, rowKey);
+    return true;
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Revoke permission from a working group for a folder
+ * @param {string} folderId - Folder ID (null for root)
+ * @param {string} groupId - ID of the working group
+ * @param {object} storageService - Storage service module
+ * @returns {Promise<boolean>}
+ */
+async function revokeFolderPermissionFromGroup(folderId, groupId, storageService) {
+  const partitionKey = folderId || 'root';
+  const rowKey = `GROUP_${groupId}`;
   
   try {
     await storageService.deletePermissionEntity(partitionKey, rowKey);
@@ -307,7 +382,9 @@ module.exports = {
   getEffectivePermission,
   getFolderPermissionForUser,
   grantFolderPermission,
+  grantFolderPermissionToGroup,
   revokeFolderPermission,
+  revokeFolderPermissionFromGroup,
   listFolderPermissions,
   sanitizeRowKey,
   unsanitizeRowKey

@@ -38,6 +38,25 @@ export interface StorageStats {
   percentageUsed?: string;
 }
 
+export interface WorkingGroup {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface UserGroupAssignment {
+  userEmail: string;
+  groupId: string;
+  groupName?: string;
+  groupDescription?: string;
+  assignedBy: string;
+  assignedAt: string;
+}
+
 // Error handling
 class ApiError extends Error {
   constructor(public statusCode: number, message: string, public details?: any) {
@@ -217,13 +236,92 @@ export const storageApi = {
   }
 };
 
+// Working Groups API
+export const workingGroupsApi = {
+  async list(): Promise<{ groups: WorkingGroup[] }> {
+    const response = await fetch(`${API_BASE_URL}/working-groups`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async get(groupId: string): Promise<{ group: WorkingGroup }> {
+    const response = await fetch(`${API_BASE_URL}/working-groups/${groupId}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async create(name: string, description?: string): Promise<{ group: WorkingGroup }> {
+    const response = await fetch(`${API_BASE_URL}/working-groups`, {
+      method: 'POST',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify({ name, description })
+    });
+    return handleResponse(response);
+  },
+
+  async update(groupId: string, name?: string, description?: string): Promise<{ group: WorkingGroup }> {
+    const response = await fetch(`${API_BASE_URL}/working-groups/${groupId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify({ name, description })
+    });
+    return handleResponse(response);
+  },
+
+  async delete(groupId: string): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/working-groups/${groupId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  }
+};
+
+// User Group Assignments API
+export const userGroupAssignmentsApi = {
+  async getUserGroups(userEmail: string): Promise<{ userEmail: string; groups: UserGroupAssignment[] }> {
+    const response = await fetch(`${API_BASE_URL}/user-group-assignments?userEmail=${encodeURIComponent(userEmail)}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async getGroupUsers(groupId: string): Promise<{ groupId: string; users: UserGroupAssignment[] }> {
+    const response = await fetch(`${API_BASE_URL}/user-group-assignments?groupId=${encodeURIComponent(groupId)}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async assign(userEmail: string, groupId: string): Promise<{ assignment: UserGroupAssignment }> {
+    const response = await fetch(`${API_BASE_URL}/user-group-assignments`, {
+      method: 'POST',
+      headers: getAuthHeaders('application/json'),
+      body: JSON.stringify({ userEmail, groupId })
+    });
+    return handleResponse(response);
+  },
+
+  async remove(userEmail: string, groupId: string): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/user-group-assignments?userEmail=${encodeURIComponent(userEmail)}&groupId=${encodeURIComponent(groupId)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  }
+};
+
 // Combined API export
 const api = {
   folders: foldersApi,
   files: filesApi,
   items: itemsApi,
   search: searchApi,
-  storage: storageApi
+  storage: storageApi,
+  workingGroups: workingGroupsApi,
+  userGroupAssignments: userGroupAssignmentsApi
 };
 
 export default api;

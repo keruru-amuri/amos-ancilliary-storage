@@ -5,8 +5,10 @@ const {
   PERMISSION, 
   PERMISSION_NAMES,
   checkFolderAccess, 
-  grantFolderPermission, 
-  revokeFolderPermission, 
+  grantFolderPermission,
+  grantFolderPermissionToGroup,
+  revokeFolderPermission,
+  revokeFolderPermissionFromGroup,
   listFolderPermissions 
 } = require('../shared/permissions');
 
@@ -61,12 +63,39 @@ module.exports = async function (context, req) {
 async function handleList(context, folderId) {
   const permissions = await listFolderPermissions(folderId, storageService);
   
-  const result = permissions.map(p => ({
-    userEmail: p.userEmail,
-    permission: p.permission,
-    permissionName: PERMISSION_NAMES[p.permission] || 'Unknown',
-    grantedBy: p.grantedBy,
-    grantedAt: p.grantedAt
+  // Fetch group names for group permissions
+  const result = await Promise.all(permissions.map(async (p) => {
+    const base = {
+      permission: p.permission,
+      permissionName: PERMISSION_NAMES[p.permission] || 'Unknown',
+      grantedBy: p.grantedBy,
+      grantedAt: p.grantedAt
+    };
+    
+    if (p.principalType === 'group') {
+      try {
+        const group = await storageService.getWorkingGroup(p.groupId);
+        return {
+          ...base,
+          principalType: 'group',
+          groupId: p.groupId,
+          groupName: group.name
+        };
+      } catch (error) {
+        return {
+          ...base,
+          principalType: 'group',
+          groupId: p.groupId,
+          groupName: '(Deleted Group)'
+        };
+      }
+    } else {
+      return {
+        ...base,
+        principalType: 'user',
+        userEmail: p.userEmail
+      };
+    }
   }));
   
   context.res = createSuccessResponse({
@@ -76,13 +105,18 @@ async function handleList(context, folderId) {
 }
 
 /**
- * Grant permission to a user
+ * Grant permission to a user or group
  */
 async function handleGrant(context, req, folderId, grantedByUser) {
-  const { userEmail, permission } = req.body || {};
+  const { userEmail, groupId, permission } = req.body || {};
   
-  if (!userEmail) {
-    context.res = createErrorResponse('userEmail is required', 400);
+  if (!userEmail && !groupId) {
+    context.res = createErrorResponse('Either userEmail or groupId is required', 400);
+    return;
+  }
+  
+  if (userEmail && groupId) {
+    context.res = createErrorResponse('Cannot specify both userEmail and groupId', 400);
     return;
   }
   
@@ -96,13 +130,34 @@ async function handleGrant(context, req, folderId, grantedByUser) {
     return;
   }
   
-  // Grant the permission
-  const entity = await grantFolderPermission(folderId, userEmail, level, grantedByUser, storageService);
+  let entity;
+  
+  if (groupId) {
+    // Verify group exists
+    try {
+      await storageService.getWorkingGroup(groupId);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        context.res = createErrorResponse('Working group not found', 404);
+        return;
+      }
+      throw error;
+    }
+    
+    // Grant permission to group
+    entity = await grantFolderPermissionToGroup(folderId, groupId, level, grantedByUser, storageService);
+  } else {
+    // Grant permission to user
+    entity = await grantFolderPermission(folderId, userEmail, level, grantedByUser, storageService);
+  }
   
   context.res = createSuccessResponse({
-    message: `Permission granted to ${userEmail}`,
+    message: groupId ? `Permission granted to group` : `Permission granted to ${userEmail}`,
     folderId: folderId || 'root',
+    principalType: entity.principalType,
+    principalId: entity.principalId,
     userEmail: entity.userEmail,
+    groupId: entity.groupId,
     permission: entity.permission,
     permissionName: entity.permissionName,
     grantedBy: entity.grantedBy,
@@ -111,21 +166,31 @@ async function handleGrant(context, req, folderId, grantedByUser) {
 }
 
 /**
- * Revoke permission from a user
+ * Revoke permission from a user or group
  */
 async function handleRevoke(context, req, folderId) {
-  const { userEmail } = req.body || req.query || {};
+  const { userEmail, groupId } = req.body || req.query || {};
   
-  if (!userEmail) {
-    context.res = createErrorResponse('userEmail is required', 400);
+  if (!userEmail && !groupId) {
+    context.res = createErrorResponse('Either userEmail or groupId is required', 400);
     return;
   }
   
-  const revoked = await revokeFolderPermission(folderId, userEmail, storageService);
+  if (userEmail && groupId) {
+    context.res = createErrorResponse('Cannot specify both userEmail and groupId', 400);
+    return;
+  }
+  
+  let revoked;
+  if (groupId) {
+    revoked = await revokeFolderPermissionFromGroup(folderId, groupId, storageService);
+  } else {
+    revoked = await revokeFolderPermission(folderId, userEmail, storageService);
+  }
   
   if (revoked) {
     context.res = createSuccessResponse({
-      message: `Permission revoked from ${userEmail}`,
+      message: groupId ? `Permission revoked from group` : `Permission revoked from ${userEmail}`,
       folderId: folderId || 'root'
     });
   } else {
