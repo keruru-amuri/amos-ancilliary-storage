@@ -1,5 +1,6 @@
 import React from 'react';
 import { LogIn } from 'lucide-react';
+import logoSvg from '../assets/logo.svg';
 
 /**
  * Full-page component shown to unauthenticated users.
@@ -25,8 +26,8 @@ export function LoginRequired() {
         {/* Header Section with Logo - 8px top padding */}
         <div className="flex justify-end" style={{ paddingTop: '8px', paddingLeft: '24px', paddingRight: '24px', paddingBottom: '0' }}>
           <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Malaysia_Airlines_logo_%282019%29.svg/512px-Malaysia_Airlines_logo_%282019%29.svg.png"
-            alt="Malaysia Airlines"
+            src={logoSvg}
+            alt="AMOS Logo"
             style={{ height: '32px' }}
           />
         </div>
